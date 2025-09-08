@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>キャリブレーションテスト</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .calibration-point {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: blue;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 9999;
+    }
+  </style>
+  <script src="webgazer.js"></script>
+</head>
+<body>
+  <script>
+    const points = [
+      { x: 100, y: 100 },
+      { x: window.innerWidth - 100, y: 100 },
+      { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+      { x: 100, y: window.innerHeight - 100 },
+      { x: window.innerWidth - 100, y: window.innerHeight - 100 }
+    ];
+
+    let current = 0;
+
+    webgazer.setGazeListener((data, timestamp) => {
+      if (data) {
+        console.log(`Gaze at: (${data.x}, ${data.y})`);
+      }
+    }).begin();
+
+    function showNextPoint() {
+      if (current >= points.length) {
+        finishCalibration();
+        return;
+      }
+
+      const point = document.createElement('div');
+      point.classList.add('calibration-point');
+      point.style.left = `${points[current].x}px`;
+      point.style.top = `${points[current].y}px`;
+
+      point.addEventListener('click', () => {
+        document.body.removeChild(point);
+        webgazer.recordScreenPosition(points[current].x, points[current].y, 'click');
+        current++;
+        showNextPoint();
+      });
+
+      document.body.appendChild(point);
+    }
+
+    function finishCalibration() {
+      console.log("✅ キャリブレーション完了");
+    }
+
+    window.addEventListener("load", () => {
+      webgazer.showVideoPreview(true); // trueでカメラ表示（falseでもOK）
+      webgazer.showPredictionPoints(true); // 視線位置を表示
+      showNextPoint(); // 開始
+    });
+  </script>
+</body>
+</html>

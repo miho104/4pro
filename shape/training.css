@@ -1,0 +1,91 @@
+:root{
+    --panel-w: 260px;
+    --panel-h: 160px;
+    --bg: #0f1115;
+    --card: #171a21;
+    --text: #e8eaed;
+    --muted:#9aa0a6;
+    --good:#6ee7b7;
+    --bad:#fca5a5;
+    --stroke: rgba(255,255,255,.08);
+}
+
+#video-frame {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+*{ box-sizing: border-box; }
+    html,body{
+    margin:0; height:100%;
+    background: var(--bg); color: var(--text);
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans JP", "Apple Color Emoji", "Segoe UI Emoji";
+    overflow: hidden; /* 画面固定 */
+}
+
+
+
+  /* 左上のパネル */
+/*.panel{
+    position:fixed; z-index:1000;
+    top:160px; left:160px;
+    width: var(--panel-w); height: var(--panel-h);
+    background: var(--card);
+    border: 1px solid var(--stroke);
+    border-radius: 14px;
+    /*box-shadow: 0 12px 32px rgba(234, 89, 89, 0.35), inset 0 1px 0 rgba(255,255,255,.03);
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 8px 12px;
+}
+*/
+.panel__target{
+    width: 220px; height: 200px;
+}
+
+.row{ display:flex; justify-content:space-between; gap: 10px; }
+.label{ color:var(--muted); font-size:12px; }
+.value{ font-weight:700; font-size:16px; }
+.stats{ display:flex; gap:14px; font-size:13px; margin-top:6px; }
+.stats b{ font-weight:800; }
+
+  /* 操作ボタン */
+.controls{
+    position:fixed; z-index:9999;
+    left:16px;top:  16px; display:inline-flex; gap:8px; align-items:center;
+}
+
+.start{
+    position:fixed; z-index:9999;
+    left:670px;top: 450px; display:inline-flex; gap:8px; align-items:center;
+    pointer-events: none;
+}
+.start .btn,.controls .btn{
+    pointer-events: auto;
+}
+
+button{
+    background: var(--card); color: var(--text);
+    border: 1px solid var(--stroke);
+    border-radius: 12px;
+    padding: 9px 14px; font-weight:700;
+    cursor:pointer;
+    transition: transform .06s ease, background .2s ease, border-color .2s ease;
+}
+button:hover{ background:#5c75b1; }
+button:active{ transform: translateY(1px); }
+.hint{ font-size:12px; color:var(--muted); }
+
+  /* 盤面（全画面） */
+.board{
+    position:fixed; inset:0;
+    width:100vw; height:100vh;
+}
+
+  /* クリック可能な図形 */
+.shape{ cursor:pointer; }
+/*.shape:focus-visible{ outline: 2px solid white; outline-offset: 2px; }*/

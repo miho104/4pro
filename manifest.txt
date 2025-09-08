@@ -1,0 +1,38 @@
+{
+    "manifest_version": 3,  // マニフェストのバージョン（V3）
+    "name": "拡張機能の名前",  // 拡張機能の名前
+    "version": "1.0",  // 拡張機能のバージョン
+    "description": "拡張機能の説明",  // 拡張機能の説明
+    "permissions": [
+      "tabs",  // タブへのアクセス権限
+      "storage",  // ストレージへのアクセス権限
+      "contextMenus"  // 右クリックメニューの作成と管理の権限
+    ],
+    "background": {  // バックグラウンドスクリプトの設定
+      "service_worker": "background.js"  // バックグラウンドスクリプトとして "background.js" ファイルを使用
+    },
+    "action": {  // アクションボタンの設定
+      "default_popup": "popup.html",  // ポップアップウィンドウの内容は "popup.html" ファイルで指定
+      "default_icon": {  // アクションボタンのアイコン設定
+        "16": "icon16.png",  // 16pxのアイコンは "icon16.png" ファイルを使用
+        "48": "icon48.png"  // 48pxのアイコンは "icon48.png" ファイルを使用
+      }
+    },
+    "icons": {  // 拡張機能のアイコンの設定
+      "16": "icon16.png",  // 16pxのアイコンは "icon16.png" ファイルを使用
+      "48": "icon48.png"  // 48pxのアイコンは "icon48.png" ファイルを使用
+      "128": "icon128.png"  // 128pxのアイコンは "icon128.png" ファイルを使用
+    },
+    "content_scripts": [  // コンテンツスクリプトの設定
+      {
+        "matches": ["https://example.com/*"],  // https://example.com/ 以下のページに対してスクリプトを注入
+        "js": ["contentScript.js"],  // contentScript.js ファイルを挿入
+        "css": ["styles.css"],  // styles.css ファイルを挿入
+        "all_frames": true  // フレーム内のすべてのフレームに対して挿入
+      }
+    ],
+    "host_permissions": [  // ホストへのアクセス権限の設定
+      "https://example.com/",  // https://example.com/ へのアクセス権限を要求
+      "http://localhost/"  // http://localhost/ へのアクセス権限を要求
+    ]
+  }

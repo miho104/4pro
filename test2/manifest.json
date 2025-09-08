@@ -1,0 +1,29 @@
+{
+    "manifest_version": 3,
+    "name": "2.0",
+    "version": "2.0",
+    "description": "動画視聴中に周辺視野を鍛える拡張機能ver2",
+    "permissions": ["scripting", "activeTab","tabs"],
+    
+    "host_permissions": ["https://www.youtube.com/*"],
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+    {
+        "matches": ["<all_urls>"],
+        "js": ["content.js"],
+        "run_at": "document_idle"
+    }
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "web_accessible_resources": [
+    {
+        "resources": ["training.html"],
+        "matches": ["<all_urls>"]
+    }
+    ]
+    
+}

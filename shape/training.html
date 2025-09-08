@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="training.css">
+</head>
+<body>
+    <iframe id="video-frame" width="640" height="360" allowfullscreen></iframe>
+
+<!-- パネルの下：操作ボタン -->
+    <div class="controls">
+    <button id="btn-reset" type="button">リセット</button>
+    <button id="btn-end" type="button">終了</button>
+    </div>
+
+    <div class="start"></div>
+
+    <!-- ゲーム盤（全画面SVG） -->
+    <svg id="board" class="board" aria-label="ゲーム盤"></svg>
+
+    <script src="training.js" defer></script>
+</body>
+</html>
