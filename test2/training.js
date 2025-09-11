@@ -7,8 +7,14 @@ document.getElementById("video-frame").src =
 let total = 0;
 let hit = 0;
 let flag=true;
-//const endTime = Date.now() + 60000;//トレーニング時間
-let color=["red","lime","magenta","blue"];//カラー配列
+let color=["hotpink","skyblue","dimgray","limegreen","crimson"];//カラー配列
+var result={};//色別結果
+let number=new Array(color.length).fill(0);
+let personal_hit=new Array(color.length).fill(0);
+result.color=color;
+result.number=number;
+result.hit=personal_hit;
+//彩度落とした色
 
 
 //ターゲット生成
@@ -21,12 +27,14 @@ function spawnTarget() {
     let targetsize =(Math.floor(Math.random() * 4) + 5) * 10;//50~80のランダム
     target.style.width = `${targetsize}px`;
     target.style.height = `${targetsize}px`;
-    target.style.backgroundColor =  color[Math.floor(Math.random() * color.length)];//カラーランダム
+    let targetcolor=Math.floor(Math.random() * color.length);
+    target.style.backgroundColor =  color[targetcolor];//カラーランダム
+    number[targetcolor]++;
     target.style.borderRadius = "50%";
     target.style.zIndex = "999999";
     target.style.cursor = "pointer";
     target.style.pointerEvents = "auto";
-    target.className = "training-target";//全削除用クラス分け
+    target.className = "training-target";//全削除用
 
     let x, y;
     do {
@@ -42,6 +50,7 @@ function spawnTarget() {
     target.style.top = `${y}px`;
             
     target.onclick = (e) => {
+        personal_hit[targetcolor]++;
         e.stopPropagation();
         hit++;
         target.remove();
@@ -73,9 +82,17 @@ loopSpawn();
     alert(`トレーニング終了！ヒット率: ${(hit / total * 100).toFixed(1)}%`);
     }, 60000); // 60秒間トレーニング
 */
+
         
 document.getElementById("end_btn").addEventListener("click",()=>{
         flag=false;
+        let message="";
+        for(let i =0;i< color.length ; i++){
+            let hits=result.hit[i];
+            let attempts=result.number[i];
+            let rate = hits > 0 ? (hits / attempts * 100).toFixed(1) : "0.0";
+            message +=`${result.color[i]}:${rate}%\n`;
+        }
         document.querySelectorAll(".training-target").forEach(el => el.remove());//残りのターゲットの消去
-        alert(`トレーニング終了！ヒット率: ${(hit / total * 100).toFixed(1)}%`);
+        alert(`終了！ヒット率: ${(hit / total * 100).toFixed(1)}%\n${message}`);
     });
