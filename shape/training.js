@@ -1,75 +1,107 @@
+// =================== ゲーム本体 ===================
 const SHAPES = ["circle", "triangle", "square", "star", "pentagon"];
 const COLORS = ["#f87171", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#f472b6"];
 const SIZES = [80, 100, 120];
+const MIN_SHAPE_SIZE = 80;
+
 const AVOID_PAD = 16;
 const CELL_INSET = 10;
 const MIN_CELL_WH = 44;
 const TARGET_TOTAL_CELLS = 12;
 
 let score = 0;
-let startTime = null;
 let targetShape = null;
-let overlayShown = false;
 let hits = 0, misses = 0, remainingTarget = 0;
+
+
+let currentRoundStartMs = 0;
+let currentRoundTargetSizes = [];
+
 
 const iframe = document.getElementById("video-frame");
 const params = new URLSearchParams(window.location.search);
-const videoId = params.get("videoId") || "dQw4w9WgXcQ";
+const videoId = params.get("videoId") || "dQw4w9WgXcQ" || params.get("v");
+Object.assign(iframe.style, { pointerEvents: "none" });
 
 
 let duration = 0;
-let lastCheckpoint = 0;
 let gameActive = false;
 let rounds = 0;
+let timerId = null;
+let startTime = null;
+let pausedAt = 0;
+let running = false;
 
-// 難易度設定
 let difficulty = null;
 let config = { rounds: 3, targetRatio: 0.4 };
 
-Object.assign(iframe.style, {
-    pointerEvents: "none"
-});
+let intervalSeconds = 0;
+let nextIntervalTime = 0;
+const startArea = document.querySelector(".start");
 
 function ytCommand(func, args = []) {
-    iframe.contentWindow.postMessage(JSON.stringify({
-        event: "command",
-        func,
-        args
-    }), "*");
+    iframe.contentWindow?.postMessage(
+        JSON.stringify({ event: "command", func, args }),
+        "*"
+    );
 }
-function requestDuration() { ytCommand("getDuration"); }
-function getCurrentTime() { ytCommand("getCurrentTime"); }
 function playVideo() { ytCommand("playVideo"); }
 function pauseVideo() { ytCommand("pauseVideo"); }
 
-// 受信
-window.addEventListener("message", (event) => {
-    try {
-        const data = JSON.parse(event.data);
-        if (data.event === "infoDelivery") {
-            if (data.info && data.info.duration) duration = data.info.duration;
-            if (data.info && data.info.currentTime) {
-                const current = data.info.currentTime;
-                if (duration > 0) {
-                    const checkpoint = Math.floor(current / (duration / 5));
-                    if (checkpoint > lastCheckpoint) {
-                        lastCheckpoint = checkpoint;
-                        startMiniGame();
-                    }
-                }
-            }
+//タイマー
+function startTimer() {
+    if (running) return;
+    startTime = performance.now() - pausedAt; // 再開時はpauseした位置から
+    running = true;
+    timerId = requestAnimationFrame(tick);
+    nextIntervalTime = intervalSeconds; // 最初の目標時間
+}
+
+function pauseTimer() {
+    if (!running) return;
+    pausedAt = performance.now() - startTime;
+    running = false;
+    cancelAnimationFrame(timerId);
+}
+
+function tick() {
+    if (!running) return;
+    const elapsed = (performance.now() - startTime) / 1000; // 秒
+
+    if (elapsed >= nextIntervalTime) {
+        console.log("指定間隔到達:", nextIntervalTime, "秒");
+        startMiniGame();
+        nextIntervalTime += intervalSeconds; // 次の目標時間を更新
+    }
+
+    if (elapsed < duration || duration === 0) { // duration未指定なら無限
+        timerId = requestAnimationFrame(tick);
+    } else {
+        console.log("動画終了");
+        running = false;
+    }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+    const setBtn = document.getElementById("set_btn");
+    const durationInput = document.getElementById("durationInput");
+
+    setBtn.addEventListener("click", () => {
+        const minutes = parseFloat(durationInput.value);
+        if (!isNaN(minutes) && minutes > 0) {
+            intervalSeconds = minutes * 60;
+            console.log("ミニゲーム間隔:", intervalSeconds, "秒");
+            startArea.innerHTML = "";
+
+            // 難易度選択を表示
+            showDifficultyUI();
+        } else {
+            alert("正しい数値を入力してください");
         }
-    } catch (e) { }
+    });
 });
 
-setInterval(() => {
-    requestDuration();
-    getCurrentTime();
-}, 1000);
-
-//難易度
-const startArea = document.querySelector(".start");
-
+// 難易度 UI
 function showDifficultyUI() {
     if (!startArea) return;
     const wrap = document.createElement("div");
@@ -77,48 +109,35 @@ function showDifficultyUI() {
     wrap.style.display = "flex";
     wrap.style.gap = "8px";
 
-    const btnEasy = document.createElement("button");
-    btnEasy.textContent = "かんたん"; btnEasy.className = "btn";
+    const btnEasy = document.createElement("button"); btnEasy.textContent = "かんたん"; btnEasy.className = "btn";
+    const btnNormal = document.createElement("button"); btnNormal.textContent = "ふつう"; btnNormal.className = "btn";
+    const btnHard = document.createElement("button"); btnHard.textContent = "むずかしい"; btnHard.className = "btn";
 
-    const btnNormal = document.createElement("button");
-    btnNormal.textContent = "ふつう"; btnNormal.className = "btn";
-
-    const btnHard = document.createElement("button");
-    btnHard.textContent = "むずかしい"; btnHard.className = "btn";
-
-    wrap.appendChild(btnEasy);
-    wrap.appendChild(btnNormal);
-    wrap.appendChild(btnHard);
+    wrap.appendChild(btnEasy); wrap.appendChild(btnNormal); wrap.appendChild(btnHard);
     startArea.appendChild(wrap);
 
     function pick(level) {
         difficulty = level;
-        if (level === "easy") {
-            config = { rounds: 2, targetRatio: 0.5 };
-        } else if (level === "normal") {
-            config = { rounds: 3, targetRatio: 0.4 };
-        } else if (level === "hard") {
-            config = { rounds: 4, targetRatio: 0.3 };
-        }
+        if (level === "easy") config = { rounds: 3, targetRatio: 0.5 };
+        if (level === "normal") config = { rounds: 3, targetRatio: 0.4 };
+        if (level === "hard") config = { rounds: 3, targetRatio: 0.3 };
         wrap.remove();
         showConfirmUI();
     }
-
     btnEasy.addEventListener("click", () => pick("easy"));
     btnNormal.addEventListener("click", () => pick("normal"));
     btnHard.addEventListener("click", () => pick("hard"));
 }
 
+//再生
 function showConfirmUI() {
-    const start = document.querySelector('.start');
-    if (!start) return;
-
     const btnConfirm = document.createElement('button');
     btnConfirm.id = 'btn-confirm';
     btnConfirm.textContent = '覚えたらクリック';
     btnConfirm.className = 'btn';
-    btnConfirm.style.marginLeft = '8px';
-    start.appendChild(btnConfirm);
+    startArea.appendChild(btnConfirm);
+
+    if (!targetShape) targetShape = randItem(SHAPES);
     if (!targetShape) targetShape = randItem(SHAPES);
 
     //お手本図形
@@ -147,22 +166,18 @@ function showConfirmUI() {
     ov.appendChild(s);
     document.body.appendChild(ov);
 
-    btnConfirm.addEventListener('click', () => {
-        const u = new URL(`https://www.youtube.com/embed/${videoId}`);
-        u.searchParams.set('start','1');
-        u.searchParams.set('playsinline','1');
-        u.searchParams.set('rel','0');
-        u.searchParams.set('autoplay','1');
-        u.searchParams.set('enablejsapi','1');
-        iframe.src = u.toString();
+    iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&autoplay=0&playsinline=1`;
 
+    btnConfirm.addEventListener('click', () => {
+        playVideo();
+        startTimer();
+        startMiniGame();
         btnConfirm.remove();
         document.getElementById('target-overlay')?.remove();
-
-        setTimeout(makeBoard, 60);
     });
 }
 
+// =================== ミニゲーム進行 ===================
 function startMiniGame() {
     if (gameActive) return;
     gameActive = true;
@@ -177,12 +192,15 @@ function runRound() {
         return;
     }
     rounds++;
+    currentRoundTargetSizes = [];
+    currentRoundStartMs = performance.now();
     makeBoard();
 }
 
 function endMiniGame() {
     clearBoard();
     gameActive = false;
+    console.log("ミニゲーム終了");
 }
 
 function clearBoard() {
@@ -190,33 +208,39 @@ function clearBoard() {
     zoneSvgs = [];
 }
 
-const btnStop = document.getElementById("btn-stop");
-btnStop?.addEventListener("click", () => {
-    if (btnStop.dataset.state === "playing") {
+
+//ボタン
+document.getElementById("btn-stop")?.addEventListener("click", (e) => {
+    const btn = e.currentTarget;
+    if (btn.dataset.state === "playing") {
         pauseVideo();
-        btnStop.dataset.state = "paused";
+        pauseTimer();
+        btn.dataset.state = "paused";
     } else {
         playVideo();
-        btnStop.dataset.state = "playing";
+        startTimer();
+        btn.dataset.state = "playing";
     }
 });
 
-const btnCalib = document.getElementById("btn-recalib");
-btnCalib?.addEventListener("click", () => {
-    window.Tracker.forceCalibrate();
-    alert("キャリブレーション完了");
+document.getElementById("btn-recalib")?.addEventListener("click", () => {
+    postToSandbox('recalibrate');
+    console.log('[Parent] Recalibration requested.');
 });
 
-const btnEnd    = document.getElementById("btn-end");
-btnEnd?.addEventListener("click", ()=>{
-    const totalPicks = hits+misses;
-    alert(`終了！ 正解:${hits} / ミス:${misses}（正解率 ${(totalPicks?(hits/totalPicks*100):0).toFixed(1)}%）`);
-    for (const z of zoneSvgs) z.svg.remove();
-    zoneSvgs=[];
+document.getElementById("btn-end")?.addEventListener("click", () => {
+    const totalPicks = hits + misses;
+    alert([
+        `終了！`,
+        `正解: ${hits} / ミス: ${misses}（正解率 ${(totalPicks ? (hits / totalPicks * 100) : 0).toFixed(1)}%）`,
+        `総合スコア: ${score.toLocaleString()}`
+    ].join('\n'));
+    clearBoard();
 });
 
+// ===== 図形＆ゾーン =====
 let zoneSvgs = [];
-const randItem = arr => arr[(Math.random() * arr.length) | 0];
+const randItem = (arr) => arr[(Math.random() * arr.length) | 0];
 const randInt = (min, max) => (Math.random() * (max - min + 1) + min) | 0;
 const svgNS = "http://www.w3.org/2000/svg";
 
@@ -225,23 +249,17 @@ function svg(tag, attrs) {
     for (const k in attrs) el.setAttribute(k, String(attrs[k]));
     return el;
 }
-function rect(x, y, w, h) { return { x, y, w, h }; }
-function intersects(a, b) {
-    return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
-}
-function inflate(r, pad) { return { x: r.x - pad, y: r.y - pad, w: r.w + pad * 2, h: r.h + pad * 2 }; }
+const rect = (x, y, w, h) => ({ x, y, w, h });
+const intersects = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+const inflate = (r, p) => ({ x: r.x - p, y: r.y - p, w: r.w + p * 2, h: r.h + p * 2 });
 
 function getVideoRect() {
     const r = iframe.getBoundingClientRect();
     return rect(r.left, r.top, r.width, r.height);
 }
 function getControlsRect() {
-    return {
-        x: 0,
-        y: 16,
-        w: 210,
-        h: 40
-    };
+    // 左上固定：二段ボタンなら広げる
+    return { x: 0, y: 16, w: 210, h: 40 };
 }
 
 function drawShape(group, type, x, y, s, fill) {
@@ -271,10 +289,10 @@ function drawShape(group, type, x, y, s, fill) {
             group.appendChild(svg("polygon", { points: pts.map(p => p.join(",")).join(" "), fill })); break;
         }
         case "pentagon": {
-            const r = s / 2, pts = [];
+            const rr = s / 2, pts = [];
             for (let i = 0; i < 5; i++) {
                 const a = -Math.PI / 2 + i * (2 * Math.PI / 5);
-                pts.push([x + r * Math.cos(a), y + r * Math.sin(a)]);
+                pts.push([x + rr * Math.cos(a), y + rr * Math.sin(a)]);
             }
             group.appendChild(svg("polygon", { points: pts.map(p => p.join(",")).join(" "), fill })); break;
         }
@@ -295,17 +313,17 @@ function rebuildZoneSvgs(zones) {
             width: `${z.w}px`, height: `${z.h}px`,
             zIndex: '1001',
             pointerEvents: 'none',
-            outline: "1px dashed rgba(0,255,0,.35)"
+            outline: "1px dashed rgba(0,255,0,.35)" // デバッグ：ゾーン見える化
         });
         document.body.appendChild(s);
         zoneSvgs.push({ svg: s, rect: z, busy: false });
     }
 }
 
-function spawnInZone(zoneIndex, type, color) {
+// size を渡す（スコア用に正解サイズを保持したい）
+function spawnInZone(zoneIndex, type, color, size) {
     const z = zoneSvgs[zoneIndex];
     if (!z || z.busy) return false;
-    let size = randItem(SIZES);
     const pad = size / 2 + 6;
     if (z.rect.w < 2 * pad || z.rect.h < 2 * pad) return false;
     const x = randInt(pad, z.rect.w - pad);
@@ -324,9 +342,32 @@ function spawnInZone(zoneIndex, type, color) {
 function onPick() {
     const picked = this.dataset.type;
     if (picked === targetShape) {
-        hits++; remainingTarget = Math.max(0, remainingTarget - 1);
+        hits++;
+        remainingTarget = Math.max(0, remainingTarget - 1);
         this.remove();
-        if (remainingTarget === 0) setTimeout(runRound, 400);
+
+        if (remainingTarget === 0) {
+            // ラウンド終了 → スコア計算
+            const clearMs = performance.now() - currentRoundStartMs;
+            /* const avgSize = currentRoundTargetSizes.length
+                 ? currentRoundTargetSizes.reduce((a, b) => a + b, 0) / currentRoundTargetSizes.length
+                 : 100;
+ 
+             // 加点：小さいほど有利（80px基準）
+             const sizeFactor = MIN_SHAPE_SIZE / Math.max(MIN_SHAPE_SIZE, avgSize);
+             const sizeComponent = Math.round(10000 * sizeFactor);
+ 
+             // 加点：速いほど有利（12秒=0点、瞬殺=12000点、下限500）
+             const speedComponent = Math.max(500, Math.round(12000 - clearMs));
+ 
+             // 減点：視線ズレ（diff総和 * 係数）
+             const penalty = Math.round(gazePenaltyRaw * 800);
+ 
+             const roundScore = Math.max(0, sizeComponent + speedComponent - penalty);
+             score += roundScore;*/
+
+            setTimeout(runRound, 400);
+        }
     } else {
         misses++;
         this.animate(
@@ -340,22 +381,28 @@ function onPick() {
     }
 }
 
+// ゾーン生成（動画/ボタンを避ける）
 function buildZonesByGuides() {
     const W = window.innerWidth, H = window.innerHeight;
     const v = getVideoRect();
     const c = getControlsRect();
+
     const xs = new Set([0, W]);
     const ys = new Set([0, H]);
+
     [v].forEach(r => {
         xs.add(Math.max(0, Math.round(r.x - AVOID_PAD)));
         xs.add(Math.min(W, Math.round(r.x + r.w + AVOID_PAD)));
         ys.add(Math.max(0, Math.round(r.y - AVOID_PAD)));
         ys.add(Math.min(H, Math.round(r.y + r.h + AVOID_PAD)));
     });
+
     const xArr = Array.from(xs).sort((a, b) => a - b);
     const yArr = Array.from(ys).sort((a, b) => a - b);
+
     const avoidVideo = inflate(v, 6);
     let cells = [];
+
     for (let xi = 0; xi < xArr.length - 1; xi++) {
         const x0 = xArr[xi], x1 = xArr[xi + 1];
         const w = x1 - x0; if (w <= 0) continue;
@@ -373,12 +420,16 @@ function buildZonesByGuides() {
             if (inset.w >= MIN_CELL_WH && inset.h >= MIN_CELL_WH) cells.push(inset);
         }
     }
+
+    // ボタン領域くり抜き（固定座標）
     const cut = inflate(c, AVOID_PAD);
     if (cut.w > 0 && cut.h > 0) {
         const next = [];
         for (const cell of cells) next.push(...cutOutCellByObstacle(cell, cut));
         cells = next;
     }
+
+    // 上限まで
     return cells.slice(0, TARGET_TOTAL_CELLS);
 }
 
@@ -409,14 +460,19 @@ function rectOverlap(a, b) {
 function makeBoard() {
     for (const z of zoneSvgs) z.svg.remove();
     zoneSvgs = [];
+
     const zones = buildZonesByGuides();
-    if (!zones.length) { return; }
+    if (!zones.length) return;
     rebuildZoneSvgs(zones);
+
     remainingTarget = 0;
+
+    // ゾーン順シャッフル
     const order = [...zones.keys()];
     for (let i = order.length - 1; i > 0; i--) {
         const j = (Math.random() * (i + 1)) | 0;[order[i], order[j]] = [order[j], order[i]];
     }
+
     const total = order.length;
     const wantTarget = Math.max(2, Math.round(total * config.targetRatio));
     const others = SHAPES.filter(s => s !== targetShape);
@@ -439,15 +495,23 @@ function makeBoard() {
         const j = (Math.random() * (i + 1)) | 0;[palette[i], palette[j]] = [palette[j], palette[i]];
     }
     let ci = 0; const nextColor = () => palette[(ci++) % palette.length];
+
     let zi = 0;
     for (const t of types) {
         let tries = 0;
         while (tries < order.length && zoneSvgs[order[zi % order.length]].busy) { zi++; tries++; }
         if (tries >= order.length) break;
-        const placed = spawnInZone(order[zi % order.length], t, nextColor());
+
+        const size = randItem(SIZES);
+        const placed = spawnInZone(order[zi % order.length], t, nextColor(), size);
         zi++;
-        if (placed && t === targetShape) remainingTarget++;
+
+        if (placed && t === targetShape) {
+            remainingTarget++;
+            currentRoundTargetSizes.push(size); // スコア用
+        }
     }
 }
 
-showDifficultyUI();
+// 初期 UI
+//showDifficultyUI();
