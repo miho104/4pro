@@ -4,25 +4,85 @@ const cupPositions = [
   { top: 400, left: 420 }
 ];
 
-//youtube再生
+//動画
+const iframe = document.getElementById("video-frame");
 const params = new URLSearchParams(window.location.search);
 const videoId = params.get("videoId");
-document.getElementById("video-frame").src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
+Object.assign(iframe.style, { pointerEvents: "none" });
+//document.getElementById("video-frame").src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
 
-
-
-//カード設定
+//設定
 const cups = document.querySelectorAll(".cup");
 const message = document.getElementById("message");
-let swapCount = 5;
-let cupOrder = [0, 1, 2];
+//let swapCount;
+//let cupOrder = [0, 1, 2];
 let ballIndex = 0;
 
+let difficulty = null;
+let config = { swapCount: 5, cupOrder:[0,1,2] };
+const startArea = document.querySelector(".start");
 
+function ytCommand(func, args = []) {
+  iframe.contentWindow?.postMessage(
+      JSON.stringify({ event: "command", func, args }),
+      "*"
+  );
+}
+function playVideo() { ytCommand("playVideo"); }
+function pauseVideo() { ytCommand("pauseVideo"); }
 
-// 初期画面
+//難易度UI
+function showDifficultyUI() {
+  if (!startArea) return;
+  const wrap = document.createElement("div");
+  wrap.id = "diff-wrap";
+  wrap.style.display = "flex";
+  wrap.style.gap = "8px";
+
+  const btnEasy = document.createElement("button"); btnEasy.textContent = "かんたん"; btnEasy.className = "btn";
+  const btnNormal = document.createElement("button"); btnNormal.textContent = "ふつう"; btnNormal.className = "btn";
+  const btnHard = document.createElement("button"); btnHard.textContent = "むずかしい"; btnHard.className = "btn";
+
+  wrap.appendChild(btnEasy); wrap.appendChild(btnNormal); wrap.appendChild(btnHard);
+  startArea.appendChild(wrap);
+
+  function pick(level) {
+      difficulty = level;
+      if (level === "easy") config = { swapCount: 3, cupOrder:[0,1,2] };
+      if (level === "normal") config = { swapCount: 5, cupOrder:[0,1,2] };
+      if (level === "hard") config = { swapCount: 5, cupOrder:[0,1,2,3] };
+      wrap.remove();
+
+  }
+  btnEasy.addEventListener("click", () => pick("easy"));
+  btnNormal.addEventListener("click", () => pick("normal"));
+  btnHard.addEventListener("click", () => pick("hard"));
+
+  iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&autoplay=0&playsinline=1`;
+  playVideo();
+}
+
+//ボタン
+document.getElementById("btn-stop")?.addEventListener("click", (e) => {
+  const btn = e.currentTarget;
+  if (btn.dataset.state === "playing") {
+      pauseVideo();
+      //pauseTimer();
+      btn.dataset.state = "paused";
+  } else {
+      playVideo();
+      //startTimer();
+      btn.dataset.state = "playing";
+  }
+});
+
+document.getElementById("restart_btn").addEventListener("click",()=>{
+  //document.getElementById("cups-container").style.position = "relative";
+  gamestart()
+});
+
 window.addEventListener("load", () => {
-  const container = document.getElementById("cups-container");
+const container = document.getElementById("cups-container");
   container.style.position = "relative";
   const waitForCalibration = setInterval(() => {
     if (window.isCalibrationDone) {
@@ -32,7 +92,6 @@ window.addEventListener("load", () => {
   }, 100);
 });
 
-//game
 function gamestart() {
   cupOrder = [0, 1, 2];
   ballIndex = Math.floor(Math.random() * cups.length);
@@ -46,31 +105,25 @@ function gamestart() {
 
   });
 
-  // 赤いカップを表示
-  //cups = document.querySelectorAll(".cup"); // クローンしたあとの新しいcupを再取得
+ //cups = document.querySelectorAll(".cup");
   cups[ballIndex].style.backgroundColor = "red";
-  message.textContent = "赤いカップを覚えてください... 3秒後に消えます";
 
   setTimeout(() => {
     cups.forEach(cup => cup.style.backgroundColor = "gray");
-    message.textContent = "シャッフル中...中央に注視してください";
     shuffleCups(swapCount);
   }, 3000);
 }
 
 function shuffleCups(count) {
   if (count === 0) {
-    message.textContent = "どのカップが赤だったかを選んでください";
     enableCupClick();
     return;
   }
 
   let [a, b] = getTwoDifferentIndexes();
 
-  // 論理順序をスワップ
   [cupOrder[a], cupOrder[b]] = [cupOrder[b], cupOrder[a]];
 
-  // 表示位置を更新
   cups.forEach((cup, i) => {
     const pos = cupPositions[cupOrder.indexOf(i)];
     cup.style.transition = "top 0.5s ease, left 0.5s ease";
@@ -78,7 +131,6 @@ function shuffleCups(count) {
     cup.style.left = `${pos.left}px`;
   });
 
-  // ballIndex も入れ替えに合わせて更新
   //ballIndex = cupOrder.indexOf(ballIndex);
 
   setTimeout(() => shuffleCups(count - 1), 700);
@@ -106,10 +158,8 @@ function enableCupClick() {
   });
 }
 
-document.getElementById("restart_btn").addEventListener("click",()=>{
-  //document.getElementById("cups-container").style.position = "relative";
-  gamestart()
-});
+
+showDifficultyUI();
 
 /*document.getElementById("end_btn").addEventListener("click",()=>{
   flag=false;
