@@ -86,6 +86,8 @@ function tick() {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+    console.log("DOM Ready, set_btn =", document.getElementById("set_btn"));
+    
     const setBtn = document.getElementById("set_btn");
     const durationInput = document.getElementById("durationInput");
 
