@@ -87,7 +87,7 @@ function tick() {
 
 window.addEventListener("DOMContentLoaded", () => {
     console.log("DOM Ready, set_btn =", document.getElementById("set_btn"));
-    
+
     const setBtn = document.getElementById("set_btn");
     const durationInput = document.getElementById("durationInput");
 
@@ -229,7 +229,7 @@ document.getElementById("btn-stop")?.addEventListener("click", (e) => {
 });
 
 document.getElementById("btn-recalib")?.addEventListener("click", () => {
-    postToSandbox('recalibrate');
+    //postToSandbox('recalibrate');
     console.log('[Parent] Recalibration requested.');
 });
 

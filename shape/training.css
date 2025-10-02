@@ -11,10 +11,12 @@
 }
 
 #video-frame {
+    pointer-events: none;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    z-index: 1;
 }
 
 *{ box-sizing: border-box; }
@@ -22,12 +24,8 @@
     margin:0; height:100%;
     background: var(--bg); color: var(--text);
     font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans JP", "Apple Color Emoji", "Segoe UI Emoji";
-    overflow: hidden; /* 画面固定 */
+    overflow: hidden;
 }
-
-
-
-  /* 左上のパネル */
 /*.panel{
     position:fixed; z-index:1000;
     top:160px; left:160px;
@@ -53,7 +51,6 @@
 .stats{ display:flex; gap:14px; font-size:13px; margin-top:6px; }
 .stats b{ font-weight:800; }
 
-  /* 操作ボタン */
 .controls{
     position:fixed; z-index:9999;
     left:16px;top:  16px; display:inline-flex; gap:8px; align-items:center;
@@ -62,10 +59,16 @@
 .start{
     position:fixed; z-index:9999;
     left:670px;top: 450px; display:inline-flex; gap:8px; align-items:center;
-    pointer-events: none;
-}
-.start .btn,.controls .btn{
     pointer-events: auto;
+}
+.start .btn,.controls .btn,.start.input{
+    pointer-events: auto;
+}
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: inner-spin-button;
+    opacity: 1;
 }
 
 button{
@@ -80,12 +83,10 @@ button:hover{ background:#5c75b1; }
 button:active{ transform: translateY(1px); }
 .hint{ font-size:12px; color:var(--muted); }
 
-  /* 盤面（全画面） */
 .board{
     position:fixed; inset:0;
     width:100vw; height:100vh;
 }
 
-  /* クリック可能な図形 */
 .shape{ cursor:pointer; }
 /*.shape:focus-visible{ outline: 2px solid white; outline-offset: 2px; }*/
