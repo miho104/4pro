@@ -20,7 +20,10 @@ let currentRoundTargetSizes = [];
 
 const iframe = document.getElementById("video-frame");
 const params = new URLSearchParams(window.location.search);
-const videoId = params.get("videoId") || "dQw4w9WgXcQ" || params.get("v");
+const videoId =params.get("v")||params.get("videoId") || "dQw4w9WgXcQ" ;
+
+console.log("videoId is:", videoId);
+
 Object.assign(iframe.style, { pointerEvents: "none" });
 
 
