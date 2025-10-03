@@ -115,9 +115,14 @@ const faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm
 faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 
 faceMesh.onResults((results) => {
+    console.log("onResults called");
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
-        if (calibratingNow) { calibrate(landmarks); calibratingNow = false; }
+        if (calibratingNow) {
+            calibrate(landmarks);
+            calibratingNow = false;
+            console.log("calibration done");
+        }
         const { ok, smoothDiff } = isLookingCenter(landmarks);
         //document.body.style.backgroundColor = ok ? "lightseagreen" : "lightcoral";
         gazePenaltyRaw += smoothDiff;  // ←ゲームスコア用に累積
@@ -181,6 +186,7 @@ let nextIntervalTime = 0;
 const startArea = document.querySelector(".start");
 
 function ytCommand(func, args = []) {
+    console.log("[ytCommand]", func, args, iframe.contentWindow);
     iframe.contentWindow?.postMessage(
         JSON.stringify({ event: "command", func, args }),
         "*"
@@ -230,6 +236,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const durationInput = document.getElementById("durationInput");
 
     setBtn.addEventListener("click", () => {
+        console.log("btnConfirm");
         const minutes = parseFloat(durationInput.value);
         if (!isNaN(minutes) && minutes > 0) {
             intervalSeconds = minutes * 60;
@@ -309,7 +316,7 @@ function showConfirmUI() {
     ov.appendChild(s);
     document.body.appendChild(ov);
 
-    iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&autoplay=0&playsinline=1`;
+    iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&autoplay=0&playsinline=1&mute=1`;
 
     btnConfirm.addEventListener('click', () => {
         playVideo();
