@@ -1,3 +1,141 @@
+//視線予測
+let gazePenaltyRaw = 0;
+let calibratingNow = false;
+let calibrated = false;
+let baseLeft = null, baseRight = null, basePose = null;
+let yawScale = 0.2, pitchScale = 0.2;
+let gazeHistory = [];
+
+const video = document.createElement("video");
+video.autoplay = true;
+video.muted = true;
+video.playsInline = true;
+video.style.display = "none";
+document.body.appendChild(video);
+
+const canvas = document.createElement("canvas");
+canvas.width = 640;
+canvas.height = 360;
+canvas.style.display = "none";
+document.body.appendChild(canvas);
+
+const ctx = canvas.getContext("2d");
+
+function avg(points) {
+    return {
+        x: points.map(p => p.x).reduce((a, b) => a + b) / points.length,
+        y: points.map(p => p.y).reduce((a, b) => a + b) / points.length
+    };
+}
+function getNormalizedEyePos(landmarks, isLeft = true) {
+    if (isLeft) {
+        const inner = landmarks[133], outer = landmarks[33];
+        const top = landmarks[159], bottom = landmarks[145];
+        const iris = avg(landmarks.slice(468, 473));
+        return {
+            x: (iris.x - inner.x) / (outer.x - inner.x),
+            y: (iris.y - top.y) / (bottom.y - top.y),
+            iris
+        };
+    } else {
+        const inner = landmarks[362], outer = landmarks[263];
+        const top = landmarks[386], bottom = landmarks[374];
+        const iris = avg(landmarks.slice(473, 478));
+        return {
+            x: (iris.x - inner.x) / (outer.x - inner.x),
+            y: (iris.y - top.y) / (bottom.y - top.y),
+            iris
+        };
+    }
+}
+// 頭部姿勢
+function getHeadPose(landmarks) {
+    const leftEye = landmarks[33];
+    const rightEye = landmarks[263];
+    const noseRoot = landmarks[168];
+    const noseTip = landmarks[1];
+    const roll = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x);
+    const pitch = Math.atan2(noseTip.y - noseRoot.y, noseTip.z - noseRoot.z);
+    const yaw = Math.atan2(rightEye.x - leftEye.x, rightEye.z - leftEye.z);
+    return { roll, pitch, yaw };
+}
+
+
+function smooth(value) { gazeHistory.push(value); if (gazeHistory.length > 5) gazeHistory.shift(); return gazeHistory.reduce((a, b) => a + b, 0) / gazeHistory.length; }
+
+function calibrate(landmarks) {
+    const left = getNormalizedEyePos(landmarks, true);
+    const right = getNormalizedEyePos(landmarks, false);
+    const pose = getHeadPose(landmarks);
+
+    baseLeft = { x: left.x, y: left.y };
+    baseRight = { x: right.x, y: right.y };
+    basePose = { ...pose };
+
+    yawScale = 0.2;
+    pitchScale = 0.2;
+
+    calibrated = true;
+    console.log("Calibration complete:", baseLeft, baseRight, basePose, yawScale, pitchScale);
+}
+
+function isLookingCenter(landmarks) {
+    const left = getNormalizedEyePos(landmarks, true);
+    const right = getNormalizedEyePos(landmarks, false);
+
+    if (!calibrated) {
+        return { ok: true, left, right, diffL: 0, diffR: 0, smoothDiff: 0, dYaw: 0, dPitch: 0 };
+    }
+
+    const pose = getHeadPose(landmarks);
+
+    // 頭部姿勢差分
+    const dYaw = pose.yaw - basePose.yaw;
+    const dPitch = pose.pitch - basePose.pitch;
+
+    // 虹彩差分（キャリブ基準）
+    const diffLx = (left.x - baseLeft.x) - dYaw * yawScale;
+    const diffLy = (left.y - baseLeft.y) - dPitch * pitchScale;
+    const diffRx = (right.x - baseRight.x) - dYaw * yawScale;
+    const diffRy = (right.y - baseRight.y) - dPitch * pitchScale;
+
+    const distL = Math.sqrt(diffLx * diffLx + diffLy * diffLy);
+    const distR = Math.sqrt(diffRx * diffRx + diffRy * diffRy);
+    const diff = Math.max(distL, distR);
+
+    const smoothDiff = smooth(diff);
+
+    const THRESHOLD = 0.08;
+    const ok = smoothDiff < THRESHOLD;
+
+    return { ok, left, right, diffL: distL, diffR: distR, smoothDiff, dYaw, dPitch };
+}
+
+const faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
+faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+
+faceMesh.onResults((results) => {
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+        const landmarks = results.multiFaceLandmarks[0];
+        if (calibratingNow) { calibrate(landmarks); calibratingNow = false; }
+        const { ok, smoothDiff } = isLookingCenter(landmarks);
+        //document.body.style.backgroundColor = ok ? "lightseagreen" : "lightcoral";
+        gazePenaltyRaw += smoothDiff;  // ←ゲームスコア用に累積
+        const clamped = Math.min(1, smoothDiff * 10);
+        const intensity = Math.pow(clamped, 2);
+
+        // 緑〜赤のグラデーション（HSLの色相を変える）
+        const hue = 160 - (160 * intensity); // 160=緑, 0=赤
+        document.body.style.backgroundColor = `hsl(${hue}, 70%, 60%)`;
+    }
+});
+
+const camera = new Camera(video, {
+    onFrame: async () => { await faceMesh.send({ image: video }); },
+    width: 640, height: 360
+});
+camera.start();
+
 // =================== ゲーム本体 ===================
 const SHAPES = ["circle", "triangle", "square", "star", "pentagon"];
 const COLORS = ["#f87171", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#f472b6"];
@@ -20,7 +158,7 @@ let currentRoundTargetSizes = [];
 
 const iframe = document.getElementById("video-frame");
 const params = new URLSearchParams(window.location.search);
-const videoId =params.get("v")||params.get("videoId") || "dQw4w9WgXcQ" ;
+const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";
 
 console.log("videoId is:", videoId);
 
@@ -160,13 +298,13 @@ function showConfirmUI() {
         zIndex: 1800,
         pointerEvents: "none",
     });
-    const s = document.createElementNS("http://www.w3.org/2000/svg","svg");
+    const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     const px = Math.min(r.width, r.height) * 0.28;
     s.setAttribute("viewBox", `0 0 ${px} ${px}`);
     s.setAttribute("width", px);
     s.setAttribute("height", px);
-    const g = document.createElementNS("http://www.w3.org/2000/svg","g");
-    drawShape(g, targetShape ?? randItem(SHAPES), px/2, px/2, px*0.9, "#10d1cf");
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    drawShape(g, targetShape ?? randItem(SHAPES), px / 2, px / 2, px * 0.9, "#10d1cf");
     s.appendChild(g);
     ov.appendChild(s);
     document.body.appendChild(ov);
@@ -229,8 +367,8 @@ document.getElementById("btn-stop")?.addEventListener("click", (e) => {
 });
 
 document.getElementById("btn-recalib")?.addEventListener("click", () => {
-    //postToSandbox('recalibrate');
-    console.log('[Parent] Recalibration requested.');
+    calibratingNow = true;
+    console.log("[視線] Recalibration requested.");
 });
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
@@ -354,22 +492,22 @@ function onPick() {
         if (remainingTarget === 0) {
             // ラウンド終了 → スコア計算
             const clearMs = performance.now() - currentRoundStartMs;
-            /* const avgSize = currentRoundTargetSizes.length
-                 ? currentRoundTargetSizes.reduce((a, b) => a + b, 0) / currentRoundTargetSizes.length
-                 : 100;
- 
-             // 加点：小さいほど有利（80px基準）
-             const sizeFactor = MIN_SHAPE_SIZE / Math.max(MIN_SHAPE_SIZE, avgSize);
-             const sizeComponent = Math.round(10000 * sizeFactor);
- 
-             // 加点：速いほど有利（12秒=0点、瞬殺=12000点、下限500）
-             const speedComponent = Math.max(500, Math.round(12000 - clearMs));
- 
-             // 減点：視線ズレ（diff総和 * 係数）
-             const penalty = Math.round(gazePenaltyRaw * 800);
- 
-             const roundScore = Math.max(0, sizeComponent + speedComponent - penalty);
-             score += roundScore;*/
+            const avgSize = currentRoundTargetSizes.length
+                ? currentRoundTargetSizes.reduce((a, b) => a + b, 0) / currentRoundTargetSizes.length
+                : 100;
+
+            // 加点：小さいほど有利（80px基準）
+            const sizeFactor = MIN_SHAPE_SIZE / Math.max(MIN_SHAPE_SIZE, avgSize);
+            const sizeComponent = Math.round(10000 * sizeFactor);
+
+            // 加点：速いほど有利（12秒=0点、瞬殺=12000点、下限500）
+            const speedComponent = Math.max(500, Math.round(12000 - clearMs));
+
+            // 減点：視線ズレ（diff総和 * 係数）
+            const penalty = Math.round((gazePenaltyRaw * 100) ** 2 * 0.05);
+
+            const roundScore = Math.max(0, sizeComponent + speedComponent - penalty);
+            score += roundScore;
 
             setTimeout(runRound, 400);
         }
