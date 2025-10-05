@@ -118,12 +118,20 @@ faceMesh.onResults((results) => {
     console.log("onResults called");
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
+
+        if (!calibrated) {
+            calibrate(landmarks);
+            console.log("[視線] 初回キャリブレーション完了");
+        }
         if (calibratingNow) {
             calibrate(landmarks);
             calibratingNow = false;
             console.log("calibration done");
         }
         const { ok, smoothDiff } = isLookingCenter(landmarks);
+        console.log(
+            `[Gaze] smoothDiff=${smoothDiff.toFixed(4)}  L=${diffL.toFixed(4)}  R=${diffR.toFixed(4)}  dYaw=${(dYaw*57.3).toFixed(1)}°  dPitch=${(dPitch*57.3).toFixed(1)}°`
+        );
         //document.body.style.backgroundColor = ok ? "lightseagreen" : "lightcoral";
         gazePenaltyRaw += smoothDiff;  // ←ゲームスコア用に累積
         const clamped = Math.min(1, smoothDiff * 10);
@@ -194,6 +202,7 @@ function ytCommand(func, args = []) {
 }
 function playVideo() { ytCommand("playVideo"); }
 function pauseVideo() { ytCommand("pauseVideo"); }
+function unMuteVideo() { ytCommand("unMute"); }
 
 //タイマー
 function startTimer() {
@@ -320,6 +329,7 @@ function showConfirmUI() {
 
     btnConfirm.addEventListener('click', () => {
         playVideo();
+        unMuteVideo();
         startTimer();
         startMiniGame();
         btnConfirm.remove();
