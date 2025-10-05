@@ -128,7 +128,7 @@ faceMesh.onResults((results) => {
             calibratingNow = false;
             console.log("calibration done");
         }
-        const { ok, smoothDiff } = isLookingCenter(landmarks);
+        const { ok, smoothDiff, diffL, diffR, dYaw, dPitch } = isLookingCenter(landmarks);
         console.log(
             `[Gaze] smoothDiff=${smoothDiff.toFixed(4)}  L=${diffL.toFixed(4)}  R=${diffR.toFixed(4)}  dYaw=${(dYaw*57.3).toFixed(1)}°  dPitch=${(dPitch*57.3).toFixed(1)}°`
         );
@@ -328,8 +328,8 @@ function showConfirmUI() {
     iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&autoplay=0&playsinline=1&mute=1`;
 
     btnConfirm.addEventListener('click', () => {
-        playVideo();
         unMuteVideo();
+        playVideo();
         startTimer();
         startMiniGame();
         btnConfirm.remove();
