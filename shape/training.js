@@ -193,7 +193,7 @@ let intervalSeconds = 0;
 let nextIntervalTime = 0;
 const startArea = document.querySelector(".start");
 
-function ytCommand(func, args = []) {
+/*function ytCommand(func, args = []) {
     console.log("[ytCommand]", func, args, iframe.contentWindow);
     iframe.contentWindow?.postMessage(
         JSON.stringify({ event: "command", func, args }),
@@ -202,7 +202,33 @@ function ytCommand(func, args = []) {
 }
 function playVideo() { ytCommand("playVideo"); }
 function pauseVideo() { ytCommand("pauseVideo"); }
-function unMuteVideo() { ytCommand("unMute"); }
+function unMuteVideo() { ytCommand("unMute"); }*/
+let player;
+
+window.onYouTubeIframeAPIReady = function() {
+    const params = new URLSearchParams(window.location.search);
+    const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";
+
+    player = new YT.Player('video-frame', {
+        videoId: videoId,
+        playerVars: {
+            rel: 0,
+            autoplay: 0,
+            playsinline: 1,
+            mute: 1
+        },
+        events: {
+            onReady: () => {
+                console.log("[YouTube] Player ready");
+            }
+        }
+    });
+};
+
+function playVideo() { player?.playVideo(); }
+function pauseVideo() { player?.pauseVideo(); }
+function unMuteVideo() { player?.unMute(); }
+
 
 //タイマー
 function startTimer() {
