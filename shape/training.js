@@ -169,8 +169,8 @@ let currentRoundStartMs = 0;
 let currentRoundTargetSizes = [];
 
 
-/*const iframe = document.getElementById("video-frame");
-const params = new URLSearchParams(window.location.search);
+const iframe = document.getElementById("video-frame");
+/*const params = new URLSearchParams(window.location.search);
 const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";*/
 
 //console.log("videoId is:", videoId);
