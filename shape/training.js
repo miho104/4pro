@@ -169,11 +169,11 @@ let currentRoundStartMs = 0;
 let currentRoundTargetSizes = [];
 
 
-const iframe = document.getElementById("video-frame");
+/*const iframe = document.getElementById("video-frame");
 const params = new URLSearchParams(window.location.search);
-const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";
+const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";*/
 
-console.log("videoId is:", videoId);
+//console.log("videoId is:", videoId);
 
 Object.assign(iframe.style, { pointerEvents: "none" });
 
@@ -204,7 +204,7 @@ function playVideo() { ytCommand("playVideo"); }
 function pauseVideo() { ytCommand("pauseVideo"); }
 function unMuteVideo() { ytCommand("unMute"); }*/
 let player;
-
+let playerReady = false;
 window.onYouTubeIframeAPIReady = function() {
     const params = new URLSearchParams(window.location.search);
     const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";
@@ -220,6 +220,7 @@ window.onYouTubeIframeAPIReady = function() {
         events: {
             onReady: () => {
                 console.log("Player ready");
+                playerReady=true;
             }
         }
     });
@@ -227,7 +228,11 @@ window.onYouTubeIframeAPIReady = function() {
 
 function playVideo() { player?.playVideo(); }
 function pauseVideo() { player?.pauseVideo(); }
-function unMuteVideo() { player?.unMute(); }
+function unMuteVideo() { if (playerReady) {
+    player.unMute();
+} else {
+    console.warn('player not ready yet');
+} }
 
 
 //タイマー
