@@ -219,7 +219,7 @@ window.onYouTubeIframeAPIReady = function() {
         },
         events: {
             onReady: () => {
-                console.log("[YouTube] Player ready");
+                console.log("Player ready");
             }
         }
     });
@@ -351,7 +351,7 @@ function showConfirmUI() {
     ov.appendChild(s);
     document.body.appendChild(ov);
 
-    iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&autoplay=0&playsinline=1&mute=1`;
+    //iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&autoplay=0&playsinline=1&mute=1`;
 
     btnConfirm.addEventListener('click', () => {
         unMuteVideo();
