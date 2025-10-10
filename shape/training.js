@@ -274,6 +274,8 @@ function unMuteVideo() { ytCommand("unMute"); }*/
 let player;
 let playerReady = false;
 
+iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&playsinline=1`;
+
 window.onYouTubeIframeAPIReady = function() {
     player = new YT.Player('video-frame', {
         videoId: videoId,
