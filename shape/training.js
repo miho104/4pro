@@ -1,3 +1,28 @@
+iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&playsinline=1`;
+
+window.onYouTubeIframeAPIReady = function() {
+    console.log("[API Ready] onYouTubeIframeAPIReady called");
+    player = new YT.Player('video-frame', {
+        videoId: videoId,
+        playerVars: {
+            rel: 0,
+            autoplay: 0,
+            playsinline: 1,
+            controls: 0,
+        },
+        events: {
+            onReady: () => {
+                console.log("Player ready");
+                playerReady=true;
+            }
+        }
+    });
+};
+
+const tag = document.createElement('script');
+tag.src = "https://www.youtube.com/iframe_api";
+document.head.appendChild(tag);
+
 let gazePenaltyRaw = 0;
 let calibratingNow = false;
 let calibrated = false;
@@ -260,39 +285,9 @@ let intervalSeconds = 0;
 let nextIntervalTime = 0;
 const startArea = document.querySelector(".start");
 
-/*function ytCommand(func, args = []) {
-    console.log("[ytCommand]", func, args, iframe.contentWindow);
-    iframe.contentWindow?.postMessage(
-        JSON.stringify({ event: "command", func, args }),
-        "*"
-    );
-}
-function playVideo() { ytCommand("playVideo"); }
-function pauseVideo() { ytCommand("pauseVideo"); }
-function unMuteVideo() { ytCommand("unMute"); }*/
-
 let player;
 let playerReady = false;
 
-iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&playsinline=1`;
-
-window.onYouTubeIframeAPIReady = function() {
-    player = new YT.Player('video-frame', {
-        videoId: videoId,
-        playerVars: {
-            rel: 0,
-            autoplay: 0,
-            playsinline: 1,
-            controls: 0,
-        },
-        events: {
-            onReady: () => {
-                console.log("Player ready");
-                playerReady=true;
-            }
-        }
-    });
-};
 
 function playVideo() { if (playerReady) {
     player.playVideo();
@@ -485,6 +480,7 @@ function clearBoard() {
 
 //ボタン
 document.getElementById("btn-stop")?.addEventListener("click", (e) => {
+    console.log("stopbtn clicked")
     const btn = e.currentTarget;
     if (btn.dataset.state === "playing") {
         pauseVideo();
