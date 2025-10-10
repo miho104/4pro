@@ -91,7 +91,7 @@ function detectFaceOutlineMovement(landmarks) {
     }
     const avgDist = totalDist / outline.length;
     prevOutline = outline.map(p => ({...p}));
-    return avgDist > 0.0008; // 姿勢変化のしきい値
+    return avgDist > 0.005; // 姿勢変化のしきい値
 }
 
 function getNormalizedEyePos(landmarks, isLeft = true) {
@@ -195,7 +195,7 @@ faceMesh.onResults((results) => {
         const leftClosed = isEyeClosed(landmarks, true);
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
-            console.log("[Blink] まばたき検出 → 視線判定スキップ");
+            console.log("[Blink] まばたき検出");
             return;
         }
 
