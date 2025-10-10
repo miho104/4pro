@@ -16,8 +16,12 @@ window.onYouTubeIframeAPIReady = function() {
         events: {
             onReady: () => {
                 console.log("Player ready");
+                player.mute();
                 playerReady=true;
             }
+        },
+        onError: (e) => {
+            console.error("[Player Error]", e.data);
         }
     });
 };
@@ -426,8 +430,8 @@ function showConfirmUI() {
         console.log("clicked")
         const startPlayback = () => {
             Object.assign(iframe.style, { pointerEvents: "none" });
-            unMuteVideo();
             playVideo();
+            unMuteVideo();
             startTimer();
             startMiniGame();
             btnConfirm.remove();
