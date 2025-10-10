@@ -1,3 +1,6 @@
+const iframe = document.getElementById("video-frame");
+const params = new URLSearchParams(window.location.search);
+const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";
 iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&playsinline=1`;
 
 window.onYouTubeIframeAPIReady = function() {
@@ -261,10 +264,6 @@ let hits = 0, misses = 0, remainingTarget = 0;
 let currentRoundStartMs = 0;
 let currentRoundTargetSizes = [];
 
-
-const iframe = document.getElementById("video-frame");
-const params = new URLSearchParams(window.location.search);
-const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";
 
 //console.log("videoId is:", videoId);
 
