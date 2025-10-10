@@ -426,9 +426,8 @@ function showConfirmUI() {
     ov.appendChild(s);
     document.body.appendChild(ov);
 
-    //iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&autoplay=0&playsinline=1&mute=1`;
-
     btnConfirm.addEventListener('click', () => {
+        console.log("clicked")
         const startPlayback = () => {
             Object.assign(iframe.style, { pointerEvents: "none" });
             unMuteVideo();
