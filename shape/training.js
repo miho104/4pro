@@ -1,10 +1,14 @@
-//視線予測
 let gazePenaltyRaw = 0;
 let calibratingNow = false;
 let calibrated = false;
 let baseLeft = null, baseRight = null, basePose = null;
 let yawScale = 0.2, pitchScale = 0.2;
 let gazeHistory = [];
+
+const FACE_OUTLINE_IDX = [...Array(17).keys()]; // 0〜16
+let prevOutline = null;
+let faceMoving = false;
+let moveCooldown = 0;
 
 const video = document.createElement("video");
 video.autoplay = true;
@@ -23,10 +27,41 @@ const ctx = canvas.getContext("2d");
 
 function avg(points) {
     return {
-        x: points.map(p => p.x).reduce((a, b) => a + b) / points.length,
-        y: points.map(p => p.y).reduce((a, b) => a + b) / points.length
+        x: points.map(p => p.x).reduce((a, b) => a + b, 0) / points.length,
+        y: points.map(p => p.y).reduce((a, b) => a + b, 0) / points.length
     };
 }
+
+function isEyeClosed(landmarks, isLeft = true) {
+    let top, bottom;
+    if (isLeft) {
+        top = landmarks[159]; bottom = landmarks[145];
+    } else {
+        top = landmarks[386]; bottom = landmarks[374];
+    }
+    const verticalDist = Math.abs(bottom.y - top.y);
+    return verticalDist < 0.0025;
+}
+
+function detectFaceOutlineMovement(landmarks) {
+    const outline = FACE_OUTLINE_IDX.map(i => landmarks[i]);
+    if (!prevOutline) {
+        prevOutline = outline.map(p => ({...p}));
+        return false;
+    }
+
+    let totalDist = 0;
+    for (let i = 0; i < outline.length; i++) {
+        const dx = outline[i].x - prevOutline[i].x;
+        const dy = outline[i].y - prevOutline[i].y;
+        const dz = outline[i].z - prevOutline[i].z;
+        totalDist += Math.sqrt(dx*dx + dy*dy + dz*dz);
+    }
+    const avgDist = totalDist / outline.length;
+    prevOutline = outline.map(p => ({...p}));
+    return avgDist > 0.0008; // 姿勢変化のしきい値
+}
+
 function getNormalizedEyePos(landmarks, isLeft = true) {
     if (isLeft) {
         const inner = landmarks[133], outer = landmarks[33];
@@ -48,7 +83,7 @@ function getNormalizedEyePos(landmarks, isLeft = true) {
         };
     }
 }
-// 頭部姿勢
+
 function getHeadPose(landmarks) {
     const leftEye = landmarks[33];
     const rightEye = landmarks[263];
@@ -60,8 +95,11 @@ function getHeadPose(landmarks) {
     return { roll, pitch, yaw };
 }
 
-
-function smooth(value) { gazeHistory.push(value); if (gazeHistory.length > 5) gazeHistory.shift(); return gazeHistory.reduce((a, b) => a + b, 0) / gazeHistory.length; }
+function smooth(value){
+    gazeHistory.push(value);
+    if (gazeHistory.length > 5) gazeHistory.shift();
+    return gazeHistory.reduce((a, b) => a + b, 0) / gazeHistory.length;
+}
 
 function calibrate(landmarks) {
     const left = getNormalizedEyePos(landmarks, true);
@@ -76,7 +114,7 @@ function calibrate(landmarks) {
     pitchScale = 0.2;
 
     calibrated = true;
-    console.log("Calibration complete:", baseLeft, baseRight, basePose, yawScale, pitchScale);
+    console.log("Calibration complete:", baseLeft, baseRight, basePose);
 }
 
 function isLookingCenter(landmarks) {
@@ -84,16 +122,13 @@ function isLookingCenter(landmarks) {
     const right = getNormalizedEyePos(landmarks, false);
 
     if (!calibrated) {
-        return { ok: true, left, right, diffL: 0, diffR: 0, smoothDiff: 0, dYaw: 0, dPitch: 0 };
+        return { state: "CENTER", smoothDiff: 0, diffL: 0, diffR: 0, dYaw: 0, dPitch: 0 };
     }
 
     const pose = getHeadPose(landmarks);
-
-    // 頭部姿勢差分
     const dYaw = pose.yaw - basePose.yaw;
     const dPitch = pose.pitch - basePose.pitch;
 
-    // 虹彩差分（キャリブ基準）
     const diffLx = (left.x - baseLeft.x) - dYaw * yawScale;
     const diffLy = (left.y - baseLeft.y) - dPitch * pitchScale;
     const diffRx = (right.x - baseRight.x) - dYaw * yawScale;
@@ -102,23 +137,52 @@ function isLookingCenter(landmarks) {
     const distL = Math.sqrt(diffLx * diffLx + diffLy * diffLy);
     const distR = Math.sqrt(diffRx * diffRx + diffRy * diffRy);
     const diff = Math.max(distL, distR);
-
     const smoothDiff = smooth(diff);
 
-    const THRESHOLD = 0.08;
-    const ok = smoothDiff < THRESHOLD;
+    const THRESHOLD_OK = 0.08;
+    const THRESHOLD_WARN = 0.12;
 
-    return { ok, left, right, diffL: distL, diffR: distR, smoothDiff, dYaw, dPitch };
+    let state;
+    if (smoothDiff < THRESHOLD_OK) {
+        state = "CENTER";
+    } else if (smoothDiff < THRESHOLD_WARN) {
+        state = "ALLOW";
+    } else {
+        state = "OFF";
+    }
+    return { state, smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch };
 }
 
 const faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
 faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 
 faceMesh.onResults((results) => {
-    console.log("onResults called");
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
 
+        const leftClosed = isEyeClosed(landmarks, true);
+        const rightClosed = isEyeClosed(landmarks, false);
+        if (leftClosed && rightClosed) {
+            console.log("[Blink] まばたき検出 → 視線判定スキップ");
+            return;
+        }
+
+        const isMoving = detectFaceOutlineMovement(landmarks);
+        if (isMoving) {
+            faceMoving = true;
+            moveCooldown = 10;
+            console.log("[FaceMove] 顔の動きを検出 → 視線判定ストップ");
+            return;
+        }
+        if (moveCooldown > 0) {
+            moveCooldown--;
+            if (moveCooldown === 0) {
+                console.log("[FaceMove] 顔の動きが停止 → 自動再キャリブ");
+                calibrate(landmarks);
+                faceMoving = false;
+            }
+            return;
+        }
         if (!calibrated) {
             calibrate(landmarks);
             console.log("[視線] 初回キャリブレーション完了");
@@ -126,19 +190,22 @@ faceMesh.onResults((results) => {
         if (calibratingNow) {
             calibrate(landmarks);
             calibratingNow = false;
-            console.log("calibration done");
+            console.log("[視線] 再キャリブレーション完了");
         }
-        const { ok, smoothDiff, diffL, diffR, dYaw, dPitch } = isLookingCenter(landmarks);
-        console.log(
-            `[Gaze] smoothDiff=${smoothDiff.toFixed(4)}  L=${diffL.toFixed(4)}  R=${diffR.toFixed(4)}  dYaw=${(dYaw*57.3).toFixed(1)}°  dPitch=${(dPitch*57.3).toFixed(1)}°`
-        );
-        //document.body.style.backgroundColor = ok ? "lightseagreen" : "lightcoral";
-        gazePenaltyRaw += smoothDiff;  // ←ゲームスコア用に累積
-        const clamped = Math.min(1, smoothDiff * 10);
-        const intensity = Math.pow(clamped, 2);
 
-        // 緑〜赤のグラデーション（HSLの色相を変える）
-        const hue = 160 - (160 * intensity); // 160=緑, 0=赤
+        const { state, smoothDiff, diffL, diffR, dYaw, dPitch } = isLookingCenter(landmarks);
+        console.log(
+            `[Gaze] state=${state} diff=${smoothDiff.toFixed(4)} L=${diffL.toFixed(4)} R=${diffR.toFixed(4)} dYaw=${(dYaw*57.3).toFixed(1)} dPitch=${(dPitch*57.3).toFixed(1)}`
+        );
+
+        if (state === "OFF") {
+            gazePenaltyRaw += smoothDiff;
+        }
+
+        let hue;
+        if (state === "CENTER") hue = 160;
+        else if (state === "ALLOW") hue = 60;
+        else hue = 0;
         document.body.style.backgroundColor = `hsl(${hue}, 70%, 60%)`;
     }
 });
@@ -148,6 +215,7 @@ const camera = new Camera(video, {
     width: 640, height: 360
 });
 camera.start();
+
 
 // =================== ゲーム本体 ===================
 const SHAPES = ["circle", "triangle", "square", "star", "pentagon"];
@@ -170,12 +238,11 @@ let currentRoundTargetSizes = [];
 
 
 const iframe = document.getElementById("video-frame");
-/*const params = new URLSearchParams(window.location.search);
-const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";*/
+const params = new URLSearchParams(window.location.search);
+const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";
 
 //console.log("videoId is:", videoId);
 
-Object.assign(iframe.style, { pointerEvents: "none" });
 
 
 let duration = 0;
@@ -203,19 +270,18 @@ const startArea = document.querySelector(".start");
 function playVideo() { ytCommand("playVideo"); }
 function pauseVideo() { ytCommand("pauseVideo"); }
 function unMuteVideo() { ytCommand("unMute"); }*/
+
 let player;
 let playerReady = false;
-window.onYouTubeIframeAPIReady = function() {
-    const params = new URLSearchParams(window.location.search);
-    const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";
 
+window.onYouTubeIframeAPIReady = function() {
     player = new YT.Player('video-frame', {
         videoId: videoId,
         playerVars: {
             rel: 0,
             autoplay: 0,
             playsinline: 1,
-            mute: 1
+            controls: 0,
         },
         events: {
             onReady: () => {
@@ -226,8 +292,12 @@ window.onYouTubeIframeAPIReady = function() {
     });
 };
 
-function playVideo() { player?.playVideo(); }
-function pauseVideo() { player?.pauseVideo(); }
+function playVideo() { if (playerReady) {
+    player.playVideo();
+} else {
+    console.warn('player not ready yet');
+}}
+function pauseVideo() { player.pauseVideo(); }
 function unMuteVideo() { if (playerReady) {
     player.unMute();
 } else {
@@ -359,15 +429,27 @@ function showConfirmUI() {
     //iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&autoplay=0&playsinline=1&mute=1`;
 
     btnConfirm.addEventListener('click', () => {
-        unMuteVideo();
-        playVideo();
-        startTimer();
-        startMiniGame();
-        btnConfirm.remove();
-        document.getElementById('target-overlay')?.remove();
+        const startPlayback = () => {
+            Object.assign(iframe.style, { pointerEvents: "none" });
+            unMuteVideo();
+            playVideo();
+            startTimer();
+            startMiniGame();
+            btnConfirm.remove();
+            document.getElementById('target-overlay')?.remove();
+        };
+        if (playerReady) {
+            startPlayback();
+        } else {
+            const checkInterval = setInterval(() => {
+                if (playerReady) {
+                    clearInterval(checkInterval);
+                    startPlayback();
+                }
+            }, 100);
+        }
     });
 }
-
 // =================== ミニゲーム進行 ===================
 function startMiniGame() {
     if (gameActive) return;
@@ -703,6 +785,3 @@ function makeBoard() {
         }
     }
 }
-
-// 初期 UI
-//showDifficultyUI();
