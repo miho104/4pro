@@ -37,7 +37,7 @@ let baseLeft = null, baseRight = null, basePose = null;
 let yawScale = 0.2, pitchScale = 0.2;
 let gazeHistory = [];
 
-const FACE_OUTLINE_IDX = [...Array(17).keys()]; // 0〜16
+const FACE_STABLE_IDX = [1, 6, 10, 67, 151, 168, 197, 297];
 let prevOutline = null;
 let faceMoving = false;
 let moveCooldown = 0;
