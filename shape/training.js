@@ -72,7 +72,8 @@ function isEyeClosed(landmarks, isLeft = true) {
         top = landmarks[386]; bottom = landmarks[374];
     }
     const verticalDist = Math.abs(bottom.y - top.y);
-    return verticalDist < 0.003;
+    console.log(verticalDist);
+    return verticalDist < 0.002;
 }
 
 function detectFaceOutlineMovement(landmarks) {
@@ -226,9 +227,7 @@ faceMesh.onResults((results) => {
         }
 
         const { state, smoothDiff, diffL, diffR, dYaw, dPitch } = isLookingCenter(landmarks);
-        console.log(
-            `[Gaze] state=${state} diff=${smoothDiff.toFixed(4)} L=${diffL.toFixed(4)} R=${diffR.toFixed(4)} dYaw=${(dYaw*57.3).toFixed(1)} dPitch=${(dPitch*57.3).toFixed(1)}`
-        );
+        //console.log(`[Gaze] state=${state} diff=${smoothDiff.toFixed(4)} L=${diffL.toFixed(4)} R=${diffR.toFixed(4)} dYaw=${(dYaw*57.3).toFixed(1)} dPitch=${(dPitch*57.3).toFixed(1)}`);
 
         if (state === "OFF") {
             gazePenaltyRaw += smoothDiff;
