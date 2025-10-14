@@ -37,6 +37,7 @@ let baseLeft = null, baseRight = null, basePose = null;
 let yawScale = 0.2, pitchScale = 0.2;
 let gazeHistory = [];
 let blinkCooldown = 0;
+let frameCounter = 0;
 
 const FACE_OUTLINE_IDX = [1, 6, 10, 67, 151, 168, 197, 297];
 let prevOutline = null;
@@ -249,7 +250,12 @@ faceMesh.onResults((results) => {
 });
 
 const camera = new Camera(video, {
-    onFrame: async () => { await faceMesh.send({ image: video }); },
+    onFrame: async () => {
+        frameCounter++;
+        if (frameCounter % 3 === 0) { // 3フレームに1回だけ実行
+            await faceMesh.send({ image: video });
+        }
+    },
     width: 640, height: 360
 });
 camera.start();
