@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="training.css">
+</head>
+
+<body>
+    <iframe id="video-frame" width="640" height="360" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+
+    <div class="start">
+        <input type="number" id="durationInput" min="1" value="3">
+        <button id="set_btn" type="button">決定</button>
+    </div>
+
+
+    <div class="controls">
+        <button id="btn-end" type="button">終了</button>
+        <button id="btn-stop" type="button">一時停止</button>
+        <button id="btn-recalib" type="button">キャリブレーション</button>
+    </div>
+
+    <svg id="board" class="board" aria-label="ゲーム盤"></svg>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="training.js" defer></script>
+</body>
+
+</html>

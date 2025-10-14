@@ -72,7 +72,7 @@ function isEyeClosed(landmarks, isLeft = true) {
         top = landmarks[386]; bottom = landmarks[374];
     }
     const verticalDist = Math.abs(bottom.y - top.y);
-    console.log(verticalDist);
+    //console.log(verticalDist);
     return verticalDist < 0.02;
 }
 
@@ -92,7 +92,8 @@ function detectFaceOutlineMovement(landmarks) {
     }
     const avgDist = totalDist / outline.length;
     prevOutline = outline.map(p => ({...p}));
-    return avgDist > 0.005; // 姿勢変化のしきい値
+    console.log(avgDist);
+    return avgDist > 0.01; // 姿勢変化のしきい値 もっと大きくてもいい
 }
 
 function getNormalizedEyePos(landmarks, isLeft = true) {
@@ -261,7 +262,9 @@ const TARGET_TOTAL_CELLS = 12;
 
 let score = 0;
 let targetShape = null;
-let hits = 0, misses = 0, remainingTarget = 0;
+let hits = 0;
+let misses = 0;
+let remainingTarget = 0;
 
 
 let currentRoundStartMs = 0;
@@ -448,7 +451,7 @@ function showConfirmUI() {
         }
     });
 }
-// =================== ミニゲーム進行 ===================
+// ミニゲーム進行
 function startMiniGame() {
     if (gameActive) return;
     gameActive = true;
@@ -510,7 +513,7 @@ document.getElementById("btn-end")?.addEventListener("click", () => {
     clearBoard();
 });
 
-// ===== 図形＆ゾーン =====
+//図形＆ゾーン
 let zoneSvgs = [];
 const randItem = (arr) => arr[(Math.random() * arr.length) | 0];
 const randInt = (min, max) => (Math.random() * (max - min + 1) + min) | 0;
@@ -530,7 +533,6 @@ function getVideoRect() {
     return rect(r.left, r.top, r.width, r.height);
 }
 function getControlsRect() {
-    // 左上固定：二段ボタンなら広げる
     return { x: 0, y: 16, w: 210, h: 40 };
 }
 
@@ -592,7 +594,6 @@ function rebuildZoneSvgs(zones) {
     }
 }
 
-// size を渡す（スコア用に正解サイズを保持したい）
 function spawnInZone(zoneIndex, type, color, size) {
     const z = zoneSvgs[zoneIndex];
     if (!z || z.busy) return false;
@@ -653,7 +654,7 @@ function onPick() {
     }
 }
 
-// ゾーン生成（動画/ボタンを避ける）
+// ゾーン生成
 function buildZonesByGuides() {
     const W = window.innerWidth, H = window.innerHeight;
     const v = getVideoRect();
