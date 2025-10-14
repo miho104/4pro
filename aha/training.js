@@ -55,6 +55,10 @@ let currentRoundStartMs = 0;
 let ahaTargetElement = null;
 
 let rounds = 0;
+let timerId = null;
+let startTime = null;
+let pausedAt = 0;
+let running = false;
 
 // ラウンド状態
 let ahaActive = false;

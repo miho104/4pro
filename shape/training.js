@@ -36,6 +36,7 @@ let calibrated = false;
 let baseLeft = null, baseRight = null, basePose = null;
 let yawScale = 0.2, pitchScale = 0.2;
 let gazeHistory = [];
+let blinkCooldown = 0;
 
 const FACE_OUTLINE_IDX = [1, 6, 10, 67, 151, 168, 197, 297];
 let prevOutline = null;
@@ -198,6 +199,12 @@ faceMesh.onResults((results) => {
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
             console.log("[Blink] まばたき検出");
+            blinkCooldown = 5; // クールダウン
+            return;
+        }
+
+        if (blinkCooldown > 0) {
+            blinkCooldown--;
             return;
         }
 

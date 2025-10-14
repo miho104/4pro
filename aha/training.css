@@ -1,3 +1,15 @@
+:root{
+    --panel-w: 260px;
+    --panel-h: 160px;
+    --bg: #0f1115;
+    --card: #171a21;
+    --text: #e8eaed;
+    --muted:#9aa0a6;
+    --good:#6ee7b7;
+    --bad:#fca5a5;
+    --stroke: rgba(255,255,255,.08);
+}
+
 #video-frame {
     position: absolute;
     top: 50%;
