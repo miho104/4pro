@@ -92,7 +92,7 @@ function detectFaceOutlineMovement(landmarks) {
     }
     const avgDist = totalDist / outline.length;
     prevOutline = outline.map(p => ({...p}));
-    console.log(avgDist);
+    //console.log(avgDist);
     return avgDist > 0.01; // 姿勢変化のしきい値 もっと大きくてもいい
 }
 
@@ -234,11 +234,10 @@ faceMesh.onResults((results) => {
             gazePenaltyRaw += smoothDiff;
         }
 
-        let hue;
-        if (state === "CENTER") hue = 160;
-        else if (state === "ALLOW") hue = 60;
-        else hue = 0;
-        document.body.style.backgroundColor = `hsl(${hue}, 70%, 60%)`;
+        const THRESHOLD_WARN = 0.12;
+        const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
+        const lightness = 50 * deviationRatio;
+        document.body.style.backgroundColor = `hsl(0, 100%, ${lightness}%)`;
     }
 });
 
@@ -333,7 +332,7 @@ function tick() {
         nextIntervalTime += intervalSeconds; // 次の目標時間を更新
     }
 
-    if (elapsed < duration || duration === 0) { // duration未指定なら無限
+    if (elapsed < duration || duration === 0) {
         timerId = requestAnimationFrame(tick);
     } else {
         console.log("動画終了");
@@ -355,7 +354,6 @@ window.addEventListener("DOMContentLoaded", () => {
             console.log("ミニゲーム間隔:", intervalSeconds, "秒");
             startArea.innerHTML = "";
 
-            // 難易度選択を表示
             showDifficultyUI();
         } else {
             alert("正しい数値を入力してください");
@@ -626,14 +624,14 @@ function onPick() {
                 ? currentRoundTargetSizes.reduce((a, b) => a + b, 0) / currentRoundTargetSizes.length
                 : 100;
 
-            // 加点：小さいほど有利（80px基準）
+            // 加点:小さい（80px基準）
             const sizeFactor = MIN_SHAPE_SIZE / Math.max(MIN_SHAPE_SIZE, avgSize);
             const sizeComponent = Math.round(10000 * sizeFactor);
 
-            // 加点：速いほど有利（12秒=0点、瞬殺=12000点、下限500）
+            // 加点:速い（12秒=0点、瞬殺=12000点、下限500）
             const speedComponent = Math.max(500, Math.round(12000 - clearMs));
 
-            // 減点：視線ズレ（diff総和 * 係数）
+            // 減点（diff総和 * 係数）
             const penalty = Math.round((gazePenaltyRaw * 100) ** 2 * 0.05);
 
             const roundScore = Math.max(0, sizeComponent + speedComponent - penalty);
@@ -694,7 +692,7 @@ function buildZonesByGuides() {
         }
     }
 
-    // ボタン領域くり抜き（固定座標）
+    // ボタン領域くり抜き
     const cut = inflate(c, AVOID_PAD);
     if (cut.w > 0 && cut.h > 0) {
         const next = [];

@@ -84,6 +84,61 @@ function unMuteVideo() { if (playerReady) {
     console.warn('player not ready yet');
 } }
 
+//タイマー
+function startTimer() {
+    if (running) return;
+    startTime = performance.now() - pausedAt; // 再開時はpauseした位置から
+    running = true;
+    timerId = requestAnimationFrame(tick);
+    nextIntervalTime = intervalSeconds; // 最初の目標時間
+}
+
+function pauseTimer() {
+    if (!running) return;
+    pausedAt = performance.now() - startTime;
+    running = false;
+    cancelAnimationFrame(timerId);
+}
+
+function tick() {
+    if (!running) return;
+    const elapsed = (performance.now() - startTime) / 1000; // 秒
+
+    if (elapsed >= nextIntervalTime) {
+        console.log("指定間隔到達:", nextIntervalTime, "秒");
+        startMiniGame();
+        nextIntervalTime += intervalSeconds; // 次の目標時間を更新
+    }
+
+    if (elapsed < duration || duration === 0) {
+        timerId = requestAnimationFrame(tick);
+    } else {
+        console.log("動画終了");
+        running = false;
+    }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+    console.log("DOM Ready, set_btn =", document.getElementById("set_btn"));
+
+    const setBtn = document.getElementById("set_btn");
+    const durationInput = document.getElementById("durationInput");
+
+    setBtn.addEventListener("click", () => {
+        console.log("btnConfirm");
+        const minutes = parseFloat(durationInput.value);
+        if (!isNaN(minutes) && minutes > 0) {
+            intervalSeconds = minutes * 60;
+            console.log("ミニゲーム間隔:", intervalSeconds, "秒");
+            startArea.innerHTML = "";
+
+            showDifficultyUI();
+        } else {
+            alert("正しい数値を入力してください");
+        }
+    });
+});
+
 // 難易度 UI
 function showDifficultyUI() {
     if (!startArea) return;
