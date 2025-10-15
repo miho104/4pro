@@ -31,6 +31,7 @@ const tag = document.createElement('script');
 tag.src = "https://www.youtube.com/iframe_api";
 document.head.appendChild(tag);
 
+// =================== ゲーム本体 ===================
 const SHAPES = ["circle", "triangle", "square", "star", "pentagon"];
 const COLORS = ["#f87171", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#f472b6"];
 const SIZES  = [80, 100, 120];
@@ -52,6 +53,8 @@ let gazePenaltyRaw = 0; // 視線ペナルティ（未実装のため0）
 const startArea = document.querySelector(".start");
 
 let currentRoundStartMs = 0;
+let duration = 0;
+
 let ahaTargetElement = null;
 
 let rounds = 0;
@@ -666,6 +669,31 @@ function buildZonesByGuides() {
     // 上限まで
     return cells.slice(0, TARGET_TOTAL_CELLS);
 }
+
+function cutOutCellByObstacle(cell, obstacle) {
+    const ov = rectOverlap(cell, obstacle);
+    if (ov.w <= 0 || ov.h <= 0) return [cell];
+    const out = [];
+    if (ov.y - cell.y >= MIN_CELL_WH) out.push({ x: cell.x, y: cell.y, w: cell.w, h: ov.y - cell.y });
+    if (cell.y + cell.h - (ov.y + ov.h) >= MIN_CELL_WH) out.push({ x: cell.x, y: ov.y + ov.h, w: cell.w, h: cell.y + cell.h - (ov.y + ov.h) });
+    if (ov.x - cell.x >= MIN_CELL_WH) out.push({ x: cell.x, y: ov.y, w: ov.x - cell.x, h: ov.h });
+    if (cell.x + cell.w - (ov.x + ov.w) >= MIN_CELL_WH) out.push({ x: ov.x + ov.w, y: ov.y, w: cell.x + cell.w - (ov.x + ov.w), h: ov.h });
+    return out.map(r => ({
+        x: r.x + CELL_INSET,
+        y: r.y + CELL_INSET,
+        w: Math.max(0, r.w - 2 * CELL_INSET),
+        h: Math.max(0, r.h - 2 * CELL_INSET),
+    })).filter(r => r.w >= MIN_CELL_WH && r.h >= MIN_CELL_WH);
+}
+
+function rectOverlap(a, b) {
+    const x0 = Math.max(a.x, b.x);
+    const y0 = Math.max(a.y, b.y);
+    const x1 = Math.min(a.x + a.w, b.x + b.w);
+    const y1 = Math.min(a.y + a.h, b.y + b.h);
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
 
 function makeBoard() {
     for (const z of zoneSvgs) z.svg.remove();
