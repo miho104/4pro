@@ -158,7 +158,7 @@ function isLookingCenter(landmarks) {
     const right = getNormalizedEyePos(landmarks, false);
 
     if (!calibrated) {
-        return { state: "CENTER", smoothDiff: 0, diffL: 0, diffR: 0, dYaw: 0, dPitch: 0 };
+        return {smoothDiff: 0, diffL: 0, diffR: 0, dYaw: 0, dPitch: 0 };
     }
 
     const pose = getHeadPose(landmarks);
@@ -175,18 +175,10 @@ function isLookingCenter(landmarks) {
     const diff = Math.max(distL, distR);
     const smoothDiff = smooth(diff);
 
-    const THRESHOLD_OK = 0.08;
-    const THRESHOLD_WARN = 0.12;
+    //const THRESHOLD_OK = 0.08;
+    //const THRESHOLD_WARN = 0.12;
 
-    let state;
-    if (smoothDiff < THRESHOLD_OK) {
-        state = "CENTER";
-    } else if (smoothDiff < THRESHOLD_WARN) {
-        state = "ALLOW";
-    } else {
-        state = "OFF";
-    }
-    return { state, smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch };
+    return {smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch };
 }
 
 const faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
@@ -238,9 +230,7 @@ faceMesh.onResults((results) => {
         const { state, smoothDiff, diffL, diffR, dYaw, dPitch } = isLookingCenter(landmarks);
         //console.log(`[Gaze] state=${state} diff=${smoothDiff.toFixed(4)} L=${diffL.toFixed(4)} R=${diffR.toFixed(4)} dYaw=${(dYaw*57.3).toFixed(1)} dPitch=${(dPitch*57.3).toFixed(1)}`);
 
-        if (state === "OFF") {
-            gazePenaltyRaw += smoothDiff;
-        }
+        gazePenaltyRaw += smoothDiff;
 
         const THRESHOLD_WARN = 0.12;
         const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
