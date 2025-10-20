@@ -199,7 +199,7 @@ faceMesh.onResults((results) => {
         const leftClosed = isEyeClosed(landmarks, true);
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
-            console.log("[Blink] まばたき検出");
+            console.log("まばたき検出");
             blinkCooldown = 5; // クールダウン
             return;
         }
@@ -213,13 +213,13 @@ faceMesh.onResults((results) => {
         if (isMoving) {
             faceMoving = true;
             moveCooldown = 10;
-            console.log("[FaceMove] 顔の動きを検出 → 視線判定ストップ");
+            console.log("視線判定ストップ");
             return;
         }
         if (moveCooldown > 0) {
             moveCooldown--;
             if (moveCooldown === 0) {
-                console.log("[FaceMove] 顔の動きが停止 → 自動再キャリブ");
+                console.log("自動再キャリブ");
                 calibrate(landmarks);
                 faceMoving = false;
             }
@@ -227,12 +227,12 @@ faceMesh.onResults((results) => {
         }
         if (!calibrated) {
             calibrate(landmarks);
-            console.log("[視線] 初回キャリブレーション完了");
+            console.log("初回キャリブレーション完了");
         }
         if (calibratingNow) {
             calibrate(landmarks);
             calibratingNow = false;
-            console.log("[視線] 再キャリブレーション完了");
+            console.log("再キャリブレーション完了");
         }
 
         const { state, smoothDiff, diffL, diffR, dYaw, dPitch } = isLookingCenter(landmarks);
@@ -322,7 +322,7 @@ function unMuteVideo() { if (playerReady) {
 //タイマー
 function startTimer() {
     if (running) return;
-    startTime = performance.now() - pausedAt; // 再開時はpauseした位置から
+    startTime = performance.now() - pausedAt;
     running = true;
     timerId = requestAnimationFrame(tick);
     nextIntervalTime = intervalSeconds; // 最初の目標時間
@@ -631,25 +631,26 @@ function onPick() {
         this.remove();
 
         if (remainingTarget === 0) {
-            // ラウンド終了 → スコア計算
+            // スコア計算
             const clearMs = performance.now() - currentRoundStartMs;
             const avgSize = currentRoundTargetSizes.length
                 ? currentRoundTargetSizes.reduce((a, b) => a + b, 0) / currentRoundTargetSizes.length
                 : 100;
 
-            // 加点:小さい（80px基準）
+            //図形サイズ加点
             const sizeFactor = MIN_SHAPE_SIZE / Math.max(MIN_SHAPE_SIZE, avgSize);
             const sizeComponent = Math.round(10000 * sizeFactor);
 
-            // 加点:速い（12秒=0点、瞬殺=12000点、下限500）
+            //クリア速度加点
             const speedComponent = Math.max(500, Math.round(12000 - clearMs));
 
-            // 減点（diff総和 * 係数）
+            // 視線ズレ減点
             const penalty = Math.round((gazePenaltyRaw * 100) ** 2 * 0.05);
 
             const roundScore = Math.max(0, sizeComponent + speedComponent - penalty);
             score += roundScore;
 
+            console.log("size加点:"+sizeComponent+" 速さ加点:"+speedComponent+" 視線減点:"+penalty);
             setTimeout(runRound, 400);
         }
     } else {
