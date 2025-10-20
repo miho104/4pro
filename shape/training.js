@@ -629,13 +629,13 @@ function onPick() {
 
             //図形サイズ加点
             const sizeFactor = MIN_SHAPE_SIZE / Math.max(MIN_SHAPE_SIZE, avgSize);
-            const sizeComponent = Math.round(10000 * sizeFactor);
+            const sizeComponent = Math.floor(Math.round(10000 * sizeFactor) / 100) * 100;
 
             //クリア速度加点
-            const speedComponent = Math.max(500, Math.round(12000 - clearMs));
+            const speedComponent =Math.floor(Math.max(500, Math.round(12000 - clearMs))/ 100) * 100;
 
             // 視線ズレ減点
-            const penalty = Math.round((gazePenaltyRaw * 100) ** 2 * 0.05);
+            const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.05) / 100) * 100;
 
             const roundScore = Math.max(0, sizeComponent + speedComponent - penalty);
             score += roundScore;
