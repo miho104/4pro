@@ -635,12 +635,15 @@ function onPick() {
             const speedComponent =Math.floor(Math.max(500, Math.round(12000 - clearMs))/ 100) * 100;
 
             // 視線ズレ減点
-            const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.05) / 100) * 100;
+            const penalty = Math.floor(Math.round((gazePenaltyRaw * 10) ** 2 * 0.05) / 100) * 100;
 
-            const roundScore = Math.max(0, sizeComponent + speedComponent - penalty);
+            //図形ミス減点
+            const misspenalty = misses * 500;
+
+            const roundScore = Math.max(0, sizeComponent + speedComponent - penalty -misspenalty);
             score += roundScore;
 
-            console.log("size加点:"+sizeComponent+" 速さ加点:"+speedComponent+" 視線減点:"+penalty);
+            console.log("size加点:"+sizeComponent+" 速さ加点:"+speedComponent+" 視線減点:"+penalty+"ミス:"+misspenalty);
             setTimeout(runRound, 400);
         }
     } else {
