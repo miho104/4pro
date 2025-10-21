@@ -635,7 +635,7 @@ function onPick() {
             const speedComponent =Math.floor(Math.max(500, Math.round(12000 - clearMs))/ 100) * 100;
 
             // 視線ズレ減点
-            const penalty = Math.floor(Math.round((gazePenaltyRaw * 10) ** 2 * 0.05) / 100) * 100;
+            const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.005) / 100) * 100;
 
             //図形ミス減点
             const misspenalty = misses * 500;
