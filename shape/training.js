@@ -192,7 +192,7 @@ faceMesh.onResults((results) => {
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
             console.log("まばたき検出");
-            blinkCooldown =10; // クールダウン
+            blinkCooldown =3; // クールダウン
             return;
         }
 
@@ -241,11 +241,11 @@ faceMesh.onResults((results) => {
 
 const camera = new Camera(video, {
     onFrame: async () => {
-        /*frameCounter++;
+        frameCounter++;
         if (frameCounter % 3 === 0) { // 3フレームに1回だけ実行
             await faceMesh.send({ image: video });
-        }*/
-        await faceMesh.send({ image: video });
+        }
+        //await faceMesh.send({ image: video });
     },
     width: 640, height: 360
 });
