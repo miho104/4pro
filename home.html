@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+
+<body>
+    <h1>周辺視野ゲーム</h1>
+    
+    <button id="shuffle">シャッフルゲーム</button>
+    <button id="shape">図形あて</button>
+    <button id="aha">アハゲーム</button>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const videoId = params.get("v");
+    
+        document.getElementById("shuffle").onclick = () => {
+            location.href = `https://miho104.github.io/4pro/shuffle/training.html?v=${videoId}`;
+        };
+        document.getElementById("shape").onclick = () => {
+            location.href = `https://miho104.github.io/4pro/shape/training.html?v=${videoId}`;
+        };
+        document.getElementById("aha").onclick = () => {
+            location.href = `https://miho104.github.io/4pro/aha/training.html?v=${videoId}`;
+        };
+    </script>
+
+</body>
+
+</html>

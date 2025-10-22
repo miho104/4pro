@@ -192,7 +192,7 @@ faceMesh.onResults((results) => {
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
             console.log("まばたき検出");
-            blinkCooldown = 5; // クールダウン
+            blinkCooldown =10; // クールダウン
             return;
         }
 
@@ -241,14 +241,14 @@ faceMesh.onResults((results) => {
 
 const camera = new Camera(video, {
     onFrame: async () => {
-        frameCounter++;
+        /*frameCounter++;
         if (frameCounter % 3 === 0) { // 3フレームに1回だけ実行
             await faceMesh.send({ image: video });
-        }
+        }*/
+        await faceMesh.send({ image: video });
     },
     width: 640, height: 360
 });
-camera.start();
 
 
 // =================== ゲーム本体 ===================
@@ -430,7 +430,7 @@ function showConfirmUI() {
     document.body.appendChild(ov);
 
     btnConfirm.addEventListener('click', () => {
-        console.log("clicked")
+        camera.start();
         const startPlayback = () => {
             Object.assign(iframe.style, { pointerEvents: "none" });
             playVideo();
