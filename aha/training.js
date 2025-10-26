@@ -342,79 +342,88 @@ function startAhaRound() {
     clearBoard();
     ahaActive=true;
     makeBoard();
+
     ahaTargetElement=null;
     if (!zoneSvgs.length) {
         const zones = buildZonesByGuides();
         if (!zones.length) return;
         rebuildZoneSvgs(zones);
     }
+    setTimeout(() => {
+        let morphCtrl = null;
+        let zoneIndex = -1;
 
-    let mode = AHA.chooseMode();
-    let morphCtrl = null;
-    let zoneIndex = -1;
+        // ラウンドモードを決定
+        let mode = AHA.chooseMode();
 
-    //空きゾーンを探す
-    if (mode === "popin") {
-        const availableZones = zoneSvgs.map((z, i) => z.busy ? -1 : i).filter(i => i !== -1);
-        if (availableZones.length > 0) {
-            zoneIndex = randItem(availableZones);
-        } else {
-            console.log("No available zones for pop-in, switching to color morph.");
-            mode = "colormorph";
+        // 空きゾーンを探す
+        if (mode === "popin") {
+            const availableZones = zoneSvgs
+                .map((z, i) => z.busy ? -1 : i)
+                .filter(i => i !== -1);
+            if (availableZones.length > 0) {
+                zoneIndex = randItem(availableZones);
+            } else {
+                console.log("No available zones for pop-in, switching to color morph.");
+                mode = "colormorph";
+            }
         }
-    }
 
-    if (mode === "colormorph") {
-        const busyZones = zoneSvgs.map((z, i) => z.busy ? i : -1).filter(i => i !== -1);
-        if (busyZones.length > 0) {
-            zoneIndex = randItem(busyZones);
-        } else {
-            console.warn("No busy zones to apply color morph. Skipping round.");
-            setTimeout(nextAhaStep, 100);
+        if (mode === "colormorph") {
+            const busyZones = zoneSvgs
+                .map((z, i) => z.busy ? i : -1)
+                .filter(i => i !== -1);
+            if (busyZones.length > 0) {
+                zoneIndex = randItem(busyZones);
+            } else {
+                console.warn("No busy zones to apply color morph. Skipping round.");
+                setTimeout(nextAhaStep, 100);
+                return;
+            }
+        }
+
+        // ゾーンが決まらない場合
+        if (zoneIndex === -1) {
+            console.error("Could not determine a valid zone for the round. Ending game.");
+            endAhaGame();
             return;
         }
-    }
-    
-    //エラー
-    if (zoneIndex === -1) {
-        console.error("Could not determine a valid zone for the round. Ending game.");
-        endAhaGame();
-        return;
-    }
 
-    const center = zoneCenter(zoneSvgs[zoneIndex].rect);
-    ahaCorrectDir = mainDirectionFromPoint(center);
+        const center = zoneCenter(zoneSvgs[zoneIndex].rect);
+        ahaCorrectDir = mainDirectionFromPoint(center);
 
-    if (mode === "popin") {
-        const type = randItem(SHAPES);
-        const size = randItem(SIZES);
-        ahaTargetElement = spawnPopIn(zoneIndex, type, size);
-        if (ahaTargetElement) {
-            zoneSvgs[zoneIndex].busy = true;
+        if (mode === "popin") {
+            const type = randItem(SHAPES);
+            const size = randItem(SIZES);
+            ahaTargetElement = spawnPopIn(zoneIndex, type, size);
+            if (ahaTargetElement) {
+                zoneSvgs[zoneIndex].busy = true;
+            } else {
+                console.warn(`Pop-in failed for zone ${zoneIndex}. Skipping round.`);
+                setTimeout(nextAhaStep, 100);
+                return;
+            }
         } else {
-            console.warn(`Pop-in failed for zone ${zoneIndex}. Skipping round.`);
-            setTimeout(nextAhaStep, 100);
-            return;
+            morphCtrl = startColorMorph(zoneIndex);
+            if (morphCtrl) {
+                ahaTargetElement = morphCtrl.group;
+            } else {
+                console.warn(`Color morph failed for zone ${zoneIndex}. Skipping round.`);
+                setTimeout(nextAhaStep, 100);
+                return;
+            }
         }
-    } else {
-        morphCtrl = startColorMorph(zoneIndex);
-        if (morphCtrl) {
-            ahaTargetElement = morphCtrl.group;
-        } else {
-            console.warn(`Color morph failed for zone ${zoneIndex}. Skipping round.`);
-            setTimeout(nextAhaStep, 100);
-            return;
+
+        ahaCleanup = () => {
+            morphCtrl?.stop?.();
+        };
+
+        if (!ahaKeydownBound) {
+            ahaKeydownBound = onAhaKeyDown;
+            window.addEventListener("keydown", ahaKeydownBound, { passive: true });
         }
-    }
 
-    ahaCleanup = () => {
-        morphCtrl?.stop?.();
-    };
-
-    if (!ahaKeydownBound) {
-        ahaKeydownBound = onAhaKeyDown;
-        window.addEventListener("keydown", ahaKeydownBound, { passive: true });
-    }
+    }, 150);
 }
 
 // 回答処理
