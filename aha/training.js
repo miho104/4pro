@@ -255,6 +255,7 @@ function mainDirectionFromPoint(pt) {
 
 function zoneCenter(z) {
     return { x: z.x + z.w / 2, y: z.y + z.h / 2 };
+}
 
 function lerpColor(c1, c2, t) {
     const a = c1.match(/\w\w/g).map(h => parseInt(h, 16));
@@ -787,5 +788,4 @@ function makeBoard() {
     const zones = buildZonesByGuides();
     if (!zones.length) return;
     rebuildZoneSvgs(zones);
-}
 }
