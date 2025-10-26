@@ -51,6 +51,8 @@ let playerReady = false;
 let gazePenaltyRaw = 0; // 視線ペナルティ（未実装のため0）
 
 const startArea = document.querySelector(".start");
+let intervalSeconds = 0;
+let nextIntervalTime = 0;
 
 let currentRoundStartMs = 0;
 let duration = 0;
@@ -72,7 +74,7 @@ let ahaKeydownBound = null; // ハンドラ退避
 
 const AHA = {
     morphMs:5000,             // 色変化にかける時間
-    popinMs: 3000,              // 新規出現のフェード時間
+    popinMs: 7000,              // 新規出現のフェード時間
     afterAnswerFreezeMs: 400,  // 回答後のフラッシュ演出時間
     roundCount: 3,             // 1ミニゲーム内のラウンド数
     chooseMode: () => (Math.random() < 0.5 ? "popin" : "colormorph"),
@@ -189,9 +191,8 @@ function showConfirmUI() {
             playVideo();
             unMuteVideo();
             startTimer();
-            startMiniGame();
             btnConfirm.remove();
-            document.getElementById('target-overlay')?.remove();
+            startMiniGame();
         };
         if (playerReady) {
             startPlayback();
@@ -338,7 +339,9 @@ function startColorMorph(zoneIndex) {
 }
 
 function startAhaRound() {
+    clearBoard();
     ahaActive=true;
+    makeBoard();
     ahaTargetElement=null;
     if (!zoneSvgs.length) {
         const zones = buildZonesByGuides();
