@@ -365,6 +365,7 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 // 難易度 UI
+//start
 function showDifficultyUI() {
     if (!startArea) return;
     const wrap = document.createElement("div");
@@ -646,15 +647,15 @@ function onPick() {
             console.log("size加点:"+sizeComponent+" 速さ加点:"+speedComponent+" 視線減点:"+penalty+"ミス:"+misspenalty);
             setTimeout(runRound, 400);
         }
-    } else {
+    } else {//ミスアニメーション
         misses++;
         this.animate(
             [
                 { transform: "translate(0,0)" },
-                { transform: "translate(-3px,0)" },
-                { transform: "translate(3px,0)" },
+                { transform: "translate(-12px,0)" },
+                { transform: "translate(12px,0)" },
                 { transform: "translate(0,0)" },
-            ], { duration: 120, iterations: 1 }
+            ], { duration: 300, iterations: 2 }
         );
     }
 }

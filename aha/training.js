@@ -70,15 +70,34 @@ let ahaActive = false;
 let ahaRounds = 0;
 let ahaCorrectDir = null;// "up" | "down" | "left" | "right"
 let ahaCleanup = null;
-let ahaKeydownBound = null;// ハンドラ退避
+let ahaKeydownBound = null; // ハンドラ退避
+let preselectedDir = null; // 2段階選択用の方向
 
 const AHA = {
-    morphMs:5000,// 色変化にかける時間
-    popinMs: 7000,// 新規出現のフェード時間
-    afterAnswerFreezeMs: 400,// 回答後のフラッシュ演出時間
-    roundCount: 3,// 1ミニゲーム内のラウンド数
+    morphMs:5000,             // 色変化にかける時間
+    popinMs: 7000,              // 新規出現のフェード時間
+    afterAnswerFreezeMs: 400,  // 回答後のフラッシュ演出時間
+    roundCount: 3,             // 1ミニゲーム内のラウンド数
     chooseMode: () => (Math.random() < 0.5 ? "popin" : "colormorph"),
 };
+
+function clearSelectionHighlights() {
+    zoneSvgs.forEach(z => {
+        z.svg.style.backgroundColor = "transparent";
+    });
+}
+
+function highlightSelection(dir) {
+    clearSelectionHighlights();
+    if (!dir) return;
+
+    zoneSvgs.forEach(z => {
+        const center = zoneCenter(z.rect);
+        if (mainDirectionFromPoint(center) === dir) {
+            z.svg.style.backgroundColor = "rgba(255, 255, 0, 0.2)"; // 半透明の黄色
+        }
+    });
+}
 
 //apiコマンド
 function playVideo() { if (playerReady) {
@@ -447,27 +466,36 @@ function onAhaKeyDown(ev) {
     else if (key === "arrowright" || key === "d") dir = "right";
     if (!dir) return;
 
-    const correct = (dir === ahaCorrectDir);
-    highlightElement(ahaTargetElement, correct);
+        if (dir === preselectedDir) {
+            const correct = (dir === ahaCorrectDir);
+            highlightElement(ahaTargetElement, false);
+            clearSelectionHighlights();
 
-    if (correct) {
-        corrects++;
-    } else {
-        misses++;
-        smallShake();
+        if (correct) {
+            corrects++;
+        } else {
+            misses++;
+            smallShake();
+        }
+
+        // スコア計算
+        const clearMs = performance.now() - currentRoundStartMs;
+        const speedComponent = Math.max(500, Math.round(9000 - clearMs));
+        const penalty = Math.round((gazePenaltyRaw * 100) ** 2 * 0.05);
+        score += Math.max(0, speedComponent - penalty);
+
+        // ラウンド終了処理
+        ahaCleanup?.();
+        nextAhaStep();
     }
-
-    // スコア：速度/視線ズレ込み
-    const clearMs = performance.now() - currentRoundStartMs;
-    const speedComponent = Math.max(500, Math.round(9000 - clearMs));
-    const penalty = Math.round((gazePenaltyRaw * 100) ** 2 * 0.05);
-    score += Math.max(0, speedComponent - penalty);
-
-    //ラウンド終了処理
-    ahaCleanup?.();
-    nextAhaStep();
+    //選択し直し
+    else {
+        preselectedDir = dir;
+        highlightSelection(dir);
+    }
 }
 
+//正解不正解ハイライト
 function highlightElement(el, isCorrect) {
     if (!el || !el.firstElementChild) return;
     const child = el.firstElementChild;
@@ -488,7 +516,7 @@ function highlightElement(el, isCorrect) {
         } else {
             child.removeAttribute("stroke-width");
         }
-    }, AHA.afterAnswerFreezeMs + 200);
+    }, AHA.afterAnswerFreezeMs + 500);
 }
 
 function flashScreen(color) {
@@ -515,6 +543,9 @@ function smallShake() {
 //ミニゲーム進行管理
 function nextAhaStep() {
     ahaRounds++;
+    preselectedDir = null;
+    clearSelectionHighlights();
+
     if (ahaRounds >= AHA.roundCount) {
         endAhaGame();
     } else {
@@ -527,6 +558,9 @@ function nextAhaStep() {
 
 function endAhaGame() {
     ahaActive = false;
+    preselectedDir = null;
+    clearSelectionHighlights();
+
     if (ahaKeydownBound) {
         window.removeEventListener("keydown", ahaKeydownBound);
         ahaKeydownBound = null;
