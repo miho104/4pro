@@ -189,6 +189,7 @@ function showConfirmUI() {
             Object.assign(iframe.style, { pointerEvents: "none" });
             playVideo();
             unMuteVideo();
+            startMiniGame();
             startTimer();
             btnConfirm.remove();
             document.getElementById('target-overlay')?.remove();
