@@ -136,10 +136,9 @@ window.addEventListener("DOMContentLoaded", () => {
     setBtn.addEventListener("click", () => {
         console.log("btnConfirm");
         const minutes = parseFloat(durationInput.value);
-        if (!isNaN(minutes) && minutes > 0) {
-            let intervalSeconds = minutes * 60;
-            console.log("ミニゲーム間隔:", intervalSeconds, "秒");
-            startArea.innerHTML = "";
+                    if (!isNaN(minutes) && minutes > 0) {
+                        intervalSeconds = minutes * 60;
+                        console.log("ミニゲーム間隔:", intervalSeconds, "秒");            startArea.innerHTML = "";
 
             showDifficultyUI();
         } else {
