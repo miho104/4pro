@@ -7,7 +7,7 @@
     --muted:#9aa0a6;
     --good:#6ee7b7;
     --bad:#fca5a5;
-    --stroke: rgba(255,255,255,.08);
+    --stroke: rgb(255, 255, 255);
 }
 
 #video-frame {

@@ -7,7 +7,7 @@
     --muted:#9aa0a6;
     --good:#6ee7b7;
     --bad:#fca5a5;
-    --stroke: rgba(255,255,255,.08);
+    --stroke: rgb(255, 255, 255);
 }
 
 #video-frame {
@@ -80,4 +80,3 @@ button:active{ transform: translateY(1px); }
     transform: scale(1.05);
 }
 .shape:active{ transform: translateY(1px); }
-/*.shape:focus-visible{ outline: 2px solid white; outline-offset: 2px; }*/

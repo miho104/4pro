@@ -30,6 +30,7 @@ const tag = document.createElement('script');
 tag.src = "https://www.youtube.com/iframe_api";
 document.head.appendChild(tag);
 
+//視線予測
 let gazePenaltyRaw = 0;
 let calibratingNow = false;
 let calibrated = false;
@@ -271,11 +272,6 @@ let remainingTarget = 0;
 
 let currentRoundStartMs = 0;
 let currentRoundTargetSizes = [];
-
-
-//console.log("videoId is:", videoId);
-
-
 
 let duration = 0;
 let gameActive = false;
@@ -589,7 +585,7 @@ function rebuildZoneSvgs(zones) {
             width: `${z.w}px`, height: `${z.h}px`,
             zIndex: '1001',
             pointerEvents: 'none',
-            outline: "1px dashed rgba(0,255,0,.35)" // デバッグ：ゾーン見える化
+            outline: "1px dashed rgba(0,255,0,.35)"//デバック用
         });
         document.body.appendChild(s);
         zoneSvgs.push({ svg: s, rect: z, busy: false });
@@ -707,7 +703,6 @@ function buildZonesByGuides() {
         for (const cell of cells) next.push(...cutOutCellByObstacle(cell, cut));
         cells = next;
     }
-
     // 上限まで
     return cells.slice(0, TARGET_TOTAL_CELLS);
 }
