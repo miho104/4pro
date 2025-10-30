@@ -266,7 +266,6 @@ function createCups(n) {
 
 let cups = document.querySelectorAll(".cup");
 const message = document.getElementById("message");
-//let swapCount;
 let cupOrder = [];
 let ballIndex = 0;
 let difficulty = null;
@@ -282,6 +281,7 @@ let nextIntervalTime = 0;
 let currentRoundStartMs = 0;
 let duration = 0;
 let ahaTargetElement = null;
+let gameActive = false;
 
 let rounds = 0;
 let timerId = null;
@@ -383,24 +383,36 @@ function showDifficultyUI() {
 
   function pick(level) {
     difficulty = level;
-    if (level === "easy") {
-      cups = createCups(3);
-      config = { swapCount: 3, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 120), rounds: 3 };
-    }
-    if (level === "normal") {
+            if (level === "easy") {
+                cups = createCups(3);
+                config = { swapCount: 3, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 3 }; // offsetを180に変更
+            }    if (level === "normal") {
       cups = createCups(3);
       config = { swapCount: 5, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 5 };
     }
     if (level === "hard") {
       cups = createCups(4);
-      config = { swapCount: 5, cupOrder: [0, 1, 2, 3], cupPositions: positionsRectangle(rect, 180), rounds: 7 }; // Harder difficulty, more rounds
+      config = { swapCount: 5, cupOrder: [0, 1, 2, 3], cupPositions: positionsRectangle(rect, 180), rounds: 5 };
     }
-    Object.assign(iframe.style, { pointerEvents: "none" });
-    wrap.remove();
-    playVideo();
-    unMuteVideo();
-    gamestart(); // This is the first game start
-    startTimer(); // This is the timer for subsequent games
+    const startPlayback = () => {
+      Object.assign(iframe.style, { pointerEvents: "none" });
+      playVideo();
+      unMuteVideo();
+      startTimer();
+      gamestart();
+      btnConfirm.remove();
+      document.getElementById('target-overlay')?.remove();
+    };
+    if (playerReady) {
+      startPlayback();
+    } else {
+      const checkInterval = setInterval(() => {
+        if (playerReady) {
+          clearInterval(checkInterval);
+          startPlayback();
+        }
+      }, 100);
+    }
   }
   btnEasy.addEventListener("click", () => { pick("easy"); });
   btnNormal.addEventListener("click", () => { pick("normal"); });
@@ -441,6 +453,12 @@ function nextRound() {
   }
 }
 
+function clearBoard() {
+  const container = document.getElementById("cups-container");
+  if (container) container.innerHTML = "";
+  cups = [];
+}
+
 //ボタン
 document.getElementById("btn-stop")?.addEventListener("click", (e) => {
   const btn = e.currentTarget;
@@ -455,14 +473,19 @@ document.getElementById("btn-stop")?.addEventListener("click", (e) => {
   }
 });
 
-window.addEventListener("load", () => {
-  const container = document.getElementById("cups-container");
-  container.style.position = "relative";
-  const waitForCalibration = setInterval(() => {
-    if (window.isCalibrationDone) {
-      clearInterval(waitForCalibration);
-    }
-  }, 100);
+document.getElementById("btn-recalib")?.addEventListener("click", () => {
+  calibratingNow = true;
+  console.log("[視線] Recalibration requested.");
+});
+
+document.getElementById("btn-end")?.addEventListener("click", () => {
+  const totalPicks = corrects + misses;
+  alert([
+      `終了！`,
+      `正解: ${corrects} / ミス: ${misses}（正解率 ${(totalPicks ? (hits / totalPicks * 100) : 0).toFixed(1)}%）`,
+      `総合スコア: ${score.toLocaleString()}`
+  ].join('\n'));
+  clearBoard();
 });
 
 function getVideoRect() {
@@ -558,7 +581,7 @@ function enableCupClick() {
         cup.style.backgroundColor = "red";
       } else {
         misses++;
-        roundScore = -penalty; // 不正解はペナルティだけ
+        roundScore = -penalty;
         cups[ballIndex].style.backgroundColor = "red";
       }
       score += Math.max(0, roundScore);

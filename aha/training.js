@@ -477,7 +477,6 @@ document.getElementById("btn-end")?.addEventListener("click", () => {
     setTimeout(clearBoard, 500);
 });
 
-
 //＝＝＝＝＝＝＝ゲーム内部＝＝＝＝＝＝＝＝＝
 function screenCenter() {
     return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
@@ -694,11 +693,14 @@ function onAhaKeyDown(ev) {
 
         if (correct) {
             corrects++;
+            highlightElement(ahaTargetElement, false, true);
         } else {
             misses++;
             smallShake();
+            setTimeout(() => {
+                highlightElement(ahaTargetElement, false, true);
+            }, 140);
         }
-
         // スコア計算
         const clearMs = performance.now() - currentRoundStartMs;
         const speedComponent = Math.max(500, Math.round(9000 - clearMs));
@@ -715,16 +717,20 @@ function onAhaKeyDown(ev) {
         highlightSelection(dir);
     }
 }
-
 //正解不正解ハイライト
-function highlightElement(el, isCorrect) {
+function highlightElement(el, isCorrect, shouldScale = false) {
     if (!el || !el.firstElementChild) return;
     const child = el.firstElementChild;
     const originalStroke = child.getAttribute("stroke");
     const originalStrokeWidth = child.getAttribute("stroke-width");
+    const originalTransform = el.getAttribute("transform") || "";
 
-    child.setAttribute("stroke", isCorrect ? "#10d1cf" : "#ff4040");
+    child.setAttribute("stroke", isCorrect ? "#10d1cf" : "#ff4040"); // Green if true, Red if false
     child.setAttribute("stroke-width", "5");
+
+    if (shouldScale) {
+        el.setAttribute("transform", `${originalTransform} scale(1.2)`);
+        el.style.transition = "transform 0.2s ease-out";
 
     setTimeout(() => {
         if (originalStroke) {
@@ -734,19 +740,13 @@ function highlightElement(el, isCorrect) {
         }
         if (originalStrokeWidth) {
             child.setAttribute("stroke-width", originalStrokeWidth);
-        } else {
-            child.removeAttribute("stroke-width");
         }
-    }, AHA.afterAnswerFreezeMs + 1000);
-}
-
-function flashScreen(color) {
-    const f = document.createElement("div");
-    Object.assign(f.style, {
-        position: "fixed", inset: "0", background: color, zIndex: 3000, pointerEvents: "none"
-    });
-    document.body.appendChild(f);
-    setTimeout(() => f.remove(), AHA.afterAnswerFreezeMs);
+        if (shouldScale) {
+            el.setAttribute("transform", originalTransform);
+            el.style.transition = "";
+        }
+        }, AHA.afterAnswerFreezeMs + 500);
+    }
 }
 
 function smallShake() {
@@ -864,7 +864,6 @@ function getControlsRect() {
     return { x: 0, y: 16, w: 210, h: 40 };
 }
 
-
 function rebuildZoneSvgs(zones) {
     for (const z of zoneSvgs) z.svg.remove();
     zoneSvgs = [];
@@ -885,25 +884,6 @@ function rebuildZoneSvgs(zones) {
         zoneSvgs.push({ svg: s, rect: z, busy: false });
     }
 }
-
-function spawnInZone(zoneIndex, type, color, size) {
-    const z = zoneSvgs[zoneIndex];
-    if (!z || z.busy) return false;
-    const pad = size / 2 + 6;
-    if (z.rect.w < 2 * pad || z.rect.h < 2 * pad) return false;
-    const x = randInt(pad, z.rect.w - pad);
-    const y = randInt(pad, z.rect.h - pad);
-    const g = svg("g", { class: "shape" });
-    g.dataset.type = type;
-    g.setAttribute("transform", `rotate(${randInt(0, 359)}, ${x}, ${y})`);
-    drawShape(g, type, x, y, size, color ?? randItem(COLORS));
-    g.style.pointerEvents = 'auto';
-    g.addEventListener("click", onPick);
-    z.svg.appendChild(g);
-    z.busy = true;
-    return true;
-}
-
 //ゾーン生成
 function buildZonesByGuides() {
     const W = window.innerWidth, H = window.innerHeight;
