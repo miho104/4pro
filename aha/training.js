@@ -699,7 +699,7 @@ function onAhaKeyDown(ev) {
             smallShake();
             setTimeout(() => {
                 highlightElement(ahaTargetElement, false, true);
-            }, 140);
+            }, 600);
         }
         // スコア計算
         const clearMs = performance.now() - currentRoundStartMs;
@@ -745,7 +745,7 @@ function highlightElement(el, isCorrect, shouldScale = false) {
             el.setAttribute("transform", originalTransform);
             el.style.transition = "";
         }
-        }, AHA.afterAnswerFreezeMs + 500);
+        }, AHA.afterAnswerFreezeMs + 800);
     }
 }
 

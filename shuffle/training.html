@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-    <meta charset="UTF-8" />
-    <title>視野トレーニング</title>
-    <link rel="stylesheet" href="training.css">
-    
-</head>
-<body>
+    <head>
+        <meta charset="UTF-8" />
+        <title>視野トレーニング</title>
+        <link rel="stylesheet" href="training.css">
+    </head><body>
     <iframe id="video-frame" width="640" height="360" allowfullscreen></iframe>
 
     <div class="start">
@@ -17,6 +15,7 @@
     <div class="controls">
         <button id="btn-end" type="button">終了</button>
         <button id="btn-stop" type="button">一時停止</button>
+        <button id="btn-recalib" type="button">キャリブレーション</button>
     </div>
 
     <div id="cups-container"></div>
@@ -25,7 +24,7 @@
     <div id="message">test</div>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-    <script src="training.js"></script>
+    <script src="training.js" defer ></script>
 
 
 

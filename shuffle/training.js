@@ -1,4 +1,3 @@
-//api
 const iframe = document.getElementById("video-frame");
 const params = new URLSearchParams(window.location.search);
 const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";
@@ -21,7 +20,7 @@ window.onYouTubeIframeAPIReady = function () {
         playerReady = true;
       }
     },
-    onError: (e) => {
+      onError: (e) => {
       console.error("[Player Error]", e.data);
     }
   });
@@ -292,21 +291,17 @@ let running = false;
 const startArea = document.querySelector(".start");
 
 //apiコマンド
-function playVideo() {
-  if (playerReady) {
-    player.playVideo();
-  } else {
-    console.warn('player not ready yet');
-  }
-}
+function playVideo() { if (playerReady) {
+  player.playVideo();
+} else {
+  console.warn('player not ready yet');
+}}
 function pauseVideo() { player.pauseVideo(); }
-function unMuteVideo() {
-  if (playerReady) {
-    player.unMute();
-  } else {
-    console.warn('player not ready yet');
-  }
-}
+function unMuteVideo() { if (playerReady) {
+  player.unMute();
+} else {
+  console.warn('player not ready yet');
+} }
 
 //タイマー
 function startTimer() {
@@ -383,10 +378,10 @@ function showDifficultyUI() {
 
   function pick(level) {
     difficulty = level;
-            if (level === "easy") {
-                cups = createCups(3);
-                config = { swapCount: 3, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 3 }; // offsetを180に変更
-            }    if (level === "normal") {
+    if (level === "easy") {
+      cups = createCups(3);
+      config = { swapCount: 3, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 3 }; // offsetを180に変更
+    } if (level === "normal") {
       cups = createCups(3);
       config = { swapCount: 5, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 5 };
     }
@@ -394,13 +389,14 @@ function showDifficultyUI() {
       cups = createCups(4);
       config = { swapCount: 5, cupOrder: [0, 1, 2, 3], cupPositions: positionsRectangle(rect, 180), rounds: 5 };
     }
+    wrap.remove();
+    
     const startPlayback = () => {
       Object.assign(iframe.style, { pointerEvents: "none" });
       playVideo();
       unMuteVideo();
       startTimer();
       gamestart();
-      btnConfirm.remove();
       document.getElementById('target-overlay')?.remove();
     };
     if (playerReady) {
@@ -481,9 +477,9 @@ document.getElementById("btn-recalib")?.addEventListener("click", () => {
 document.getElementById("btn-end")?.addEventListener("click", () => {
   const totalPicks = corrects + misses;
   alert([
-      `終了！`,
-      `正解: ${corrects} / ミス: ${misses}（正解率 ${(totalPicks ? (hits / totalPicks * 100) : 0).toFixed(1)}%）`,
-      `総合スコア: ${score.toLocaleString()}`
+    `終了！`,
+    `正解: ${corrects} / ミス: ${misses}（正解率 ${(totalPicks ? (hits / totalPicks * 100) : 0).toFixed(1)}%）`,
+    `総合スコア: ${score.toLocaleString()}`
   ].join('\n'));
   clearBoard();
 });
