@@ -181,75 +181,96 @@ function isLookingCenter(landmarks) {
 
   return { smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch };
 }
+// ================== 視線予測・最適化版 ==================
 
-const faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
-faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+let lastBgLightness = 50;
+let targetBgLightness = 50;
+let lastUpdate = performance.now();
+
+const faceMesh = new FaceMesh({
+  locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`,
+});
+faceMesh.setOptions({
+  maxNumFaces: 1,
+  refineLandmarks: false,
+  minDetectionConfidence: 0.6,
+  minTrackingConfidence: 0.6,
+});
 
 faceMesh.onResults((results) => {
-  if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-    const landmarks = results.multiFaceLandmarks[0];
+  if (!results.multiFaceLandmarks?.length) return;
+  const landmarks = results.multiFaceLandmarks[0];
 
-    const leftClosed = isEyeClosed(landmarks, true);
-    const rightClosed = isEyeClosed(landmarks, false);
-    if (leftClosed && rightClosed) {
-      console.log("まばたき検出");
-      blinkCooldown = 5; // クールダウン
-      return;
-    }
-
-    if (blinkCooldown > 0) {
-      blinkCooldown--;
-      return;
-    }
-
-    const isMoving = detectFaceOutlineMovement(landmarks);
-    if (isMoving) {
-      faceMoving = true;
-      moveCooldown = 10;
-      console.log("視線判定ストップ");
-      return;
-    }
-    if (moveCooldown > 0) {
-      moveCooldown--;
-      if (moveCooldown === 0) {
-        console.log("自動再キャリブ");
-        calibrate(landmarks);
-        faceMoving = false;
-      }
-      return;
-    }
-    if (!calibrated) {
-      calibrate(landmarks);
-      console.log("初回キャリブレーション完了");
-    }
-    if (calibratingNow) {
-      calibrate(landmarks);
-      calibratingNow = false;
-      console.log("再キャリブレーション完了");
-    }
-
-    const { state, smoothDiff, diffL, diffR, dYaw, dPitch } = isLookingCenter(landmarks);
-    //console.log(`[Gaze] state=${state} diff=${smoothDiff.toFixed(4)} L=${diffL.toFixed(4)} R=${diffR.toFixed(4)} dYaw=${(dYaw*57.3).toFixed(1)} dPitch=${(dPitch*57.3).toFixed(1)}`);
-
-    gazePenaltyRaw += smoothDiff;
-
-    const THRESHOLD_WARN = 0.12;
-    const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
-    const lightness = 50 * deviationRatio;
-    document.body.style.backgroundColor = `hsl(0, 100%, ${lightness}%)`;
+  const leftClosed = isEyeClosed(landmarks, true);
+  const rightClosed = isEyeClosed(landmarks, false);
+  if (leftClosed && rightClosed) {
+    blinkCooldown = 2;//瞬きクールダウン
+    return;
   }
+  if (blinkCooldown > 0) {
+    blinkCooldown--;
+    return;
+  }
+
+  const isMoving = detectFaceOutlineMovement(landmarks);
+  if (isMoving) {
+    faceMoving = true;
+    moveCooldown = 10;
+    return;
+  }
+  if (moveCooldown > 0) {
+    moveCooldown--;
+    if (moveCooldown === 0) {
+      calibrate(landmarks);
+      faceMoving = false;
+    }
+    return;
+  }
+
+  if (!calibrated) {
+    calibrate(landmarks);
+    console.log("初回キャリブレーション完了");
+  }
+  if (calibratingNow) {
+    calibrate(landmarks);
+    calibratingNow = false;
+    console.log("再キャリブレーション完了");
+  }
+
+  const { smoothDiff } = isLookingCenter(landmarks);
+  gazePenaltyRaw += smoothDiff;
+
+  const THRESHOLD_WARN = 0.12;
+  const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
+  targetBgLightness = 50 * deviationRatio;
 });
+
+function animateBg() {
+  const now = performance.now();
+  const dt = now - lastUpdate;
+  lastUpdate = now;
+
+  const lerpFactor = 1 - Math.exp(-dt / 250);
+  lastBgLightness += (targetBgLightness - lastBgLightness) * lerpFactor;
+
+  document.body.style.backgroundColor = `hsl(0, 100%, ${lastBgLightness}%)`;
+  requestAnimationFrame(animateBg);
+}
+animateBg();
 
 const camera = new Camera(video, {
   onFrame: async () => {
     frameCounter++;
-    if (frameCounter % 3 === 0) { // 3フレームに1回だけ実行
+
+    if (frameCounter % 6 === 0) {
       await faceMesh.send({ image: video });
     }
   },
-  width: 640, height: 360
+  width: 640,
+  height: 360,
 });
 camera.start();
+
 
 //============ゲーム本体=============
 function createCups(n) {
