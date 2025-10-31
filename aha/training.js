@@ -284,7 +284,7 @@ let rounds = 0;
 let timerId = null;
 let startTime = null;
 let pausedAt = 0;
-let running = false;
+let running = null;
 
 // ラウンド状態
 let ahaActive = false;
@@ -297,7 +297,7 @@ let preselectedDir = null; // 2段階選択用の方向
 const AHA = {
     morphMs:5000,             // 色変化にかける時間
     popinMs: 7000,              // 新規出現のフェード時間
-    afterAnswerFreezeMs: 1000, // 回答後のフラッシュ演出時間 (ハイライト時間延長)
+    afterAnswerFreezeMs: 1500, // 回答後のフラッシュ演出時間
     roundCount: 3,             // 1ミニゲーム内のラウンド数
     chooseMode: () => (Math.random() < 0.5 ? "popin" : "colormorph"),
 };
@@ -340,12 +340,14 @@ function startTimer() {
     running = true;
     timerId = requestAnimationFrame(tick);
     nextIntervalTime = intervalSeconds; // 最初の目標時間
+    console.log("timer start")//デバック用
 }
 
 function pauseTimer() {
     if (!running) return;
     pausedAt = performance.now() - startTime;
     running = false;
+    console.log("timer stop")//デバック用
     cancelAnimationFrame(timerId);
 }
 
@@ -381,6 +383,7 @@ window.addEventListener("DOMContentLoaded", () => {
                         console.log("ミニゲーム間隔:", intervalSeconds, "秒");            startArea.innerHTML = "";
 
             showDifficultyUI();
+            camera.start();
         } else {
             alert("正しい数値を入力してください");
         }
@@ -430,7 +433,6 @@ function showConfirmUI() {
             playVideo();
             unMuteVideo();
             startMiniGame();
-            startTimer();
             btnConfirm.remove();
             document.getElementById('target-overlay')?.remove();
         };
@@ -453,11 +455,11 @@ document.getElementById("btn-stop")?.addEventListener("click", (e) => {
     const btn = e.currentTarget;
     if (btn.dataset.state === "playing") {
         pauseVideo();
-        pauseTimer();
+        if(running=! null)pauseTimer();
         btn.dataset.state = "paused";
     } else {
         playVideo();
-        startTimer();
+        if(running=! null)startTimer();
         btn.dataset.state = "playing";
     }
 });
@@ -696,10 +698,10 @@ function onAhaKeyDown(ev) {
             highlightElement(ahaTargetElement, false, true);
         } else {
             misses++;
-            smallShake();
+            smallShake();//360
             setTimeout(() => {
                 highlightElement(ahaTargetElement, false, true);
-            }, 600);
+            }, 400);
         }
         // スコア計算
         const clearMs = performance.now() - currentRoundStartMs;
@@ -745,7 +747,7 @@ function highlightElement(el, isCorrect, shouldScale = false) {
             el.setAttribute("transform", originalTransform);
             el.style.transition = "";
         }
-        }, AHA.afterAnswerFreezeMs + 800);
+        }, AHA.afterAnswerFreezeMs);
     }
 }
 
@@ -757,7 +759,7 @@ function smallShake() {
             { transform: "translate(15px,0)" },
             { transform: "translate(0,0)" },
         ],
-        { duration: 200, iterations:3 }
+        { duration: 120, iterations:3 }
     );
 }
 
@@ -767,17 +769,19 @@ function nextAhaStep() {
     preselectedDir = null;
     clearSelectionHighlights();
 
-    if (ahaRounds >= AHA.roundCount) {
-        endAhaGame();
-    } else {
-        setTimeout(() => {
-            currentRoundStartMs = performance.now();
-            startAhaRound();
-        }, 180);
-    }
-}
+            if (ahaRounds >= AHA.roundCount) {
+                endAhaGame();
+            } else {
+                ahaActive = false; // 入力を一時的に無効化
+                setTimeout(() => {
+                    currentRoundStartMs = performance.now();
+                    startAhaRound();
+                }, AHA.afterAnswerFreezeMs + 500);
+            }}
 
 function endAhaGame() {
+    document.getElementById('hourglass-container').style.display = 'block'; //砂時計を表示
+    startTimer();
     ahaActive = false;
     preselectedDir = null;
     clearSelectionHighlights();
@@ -788,7 +792,6 @@ function endAhaGame() {
     }
     setTimeout(() => {
         clearBoard();
-        console.log("[Aha] ミニゲーム終了");
     }, AHA.afterAnswerFreezeMs + 200);
 }
 
@@ -796,6 +799,7 @@ function startMiniGame() {
     ahaActive = true;
     ahaRounds = 0;
     currentRoundStartMs = performance.now();
+    document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
     startAhaRound();
 }
 
