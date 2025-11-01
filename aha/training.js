@@ -580,6 +580,7 @@ function startColorMorph(zoneIndex) {
 }
 
 function startAhaRound() {
+    ahaActive = true;
     makeBoard();
     const maxShapes = 6;
     const shuffledZones = [...zoneSvgs].sort(() => 0.5 - Math.random());

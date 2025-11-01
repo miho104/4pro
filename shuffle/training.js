@@ -192,7 +192,7 @@ const faceMesh = new FaceMesh({
 });
 faceMesh.setOptions({
   maxNumFaces: 1,
-  refineLandmarks: false,
+  refineLandmarks: true,
   minDetectionConfidence: 0.6,
   minTrackingConfidence: 0.6,
 });
