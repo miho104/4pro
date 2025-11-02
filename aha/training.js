@@ -728,7 +728,7 @@ function highlightElement(el, isCorrect, shouldScale = false) {
     const originalStrokeWidth = child.getAttribute("stroke-width");
     const originalTransform = el.getAttribute("transform") || "";
 
-    child.setAttribute("stroke", isCorrect ? "#10d1cf" : "#ff4040"); // Green if true, Red if false
+    child.setAttribute("stroke", isCorrect ? "#10d1cf" : "#ff4040");
     child.setAttribute("stroke-width", "5");
 
     if (shouldScale) {
@@ -769,16 +769,21 @@ function nextAhaStep() {
     ahaRounds++;
     preselectedDir = null;
     clearSelectionHighlights();
+    ahaActive = false;
 
-            if (ahaRounds >= AHA.roundCount) {
-                setTimeout(endAhaGame(),AHA.afterAnswerFreezeMs+500);
-            } else {
-                ahaActive = false; // 入力を一時的に無効化
-                setTimeout(() => {
-                    currentRoundStartMs = performance.now();
-                    startAhaRound();
-                }, AHA.afterAnswerFreezeMs + 500);
-            }}
+    if (ahaRounds >= AHA.roundCount) {
+        setTimeout(() => {
+            endAhaGame();
+        }, AHA.afterAnswerFreezeMs + 500);
+    } else {
+        // 次のラウンドへ
+        setTimeout(() => {
+            ahaActive = true;
+            currentRoundStartMs = performance.now();
+            startAhaRound();
+        }, AHA.afterAnswerFreezeMs + 500);
+    }
+}
 
 function endAhaGame() {
     document.getElementById('hourglass-container').style.display = 'block'; //砂時計を表示
