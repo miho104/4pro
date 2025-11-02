@@ -151,7 +151,6 @@ function calibrate(landmarks) {
   pitchScale = 0.2;
 
   calibrated = true;
-  console.log("Calibration complete:", baseLeft, baseRight, basePose);
 }
 
 function isLookingCenter(landmarks) {
@@ -269,7 +268,6 @@ const camera = new Camera(video, {
   width: 640,
   height: 360,
 });
-camera.start();
 
 
 //============ゲーム本体=============
@@ -400,20 +398,18 @@ function showDifficultyUI() {
   function pick(level) {
     difficulty = level;
     if (level === "easy") {
-      cups = createCups(3);
-      config = { swapCount: 3, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 3 }; // offsetを180に変更
+      config = { cupCount: 3, swapCount: 3, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 3 };
     } if (level === "normal") {
-      cups = createCups(3);
-      config = { swapCount: 5, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 5 };
+      config = { cupCount: 3, swapCount: 5, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 5 };
     }
     if (level === "hard") {
-      cups = createCups(4);
-      config = { swapCount: 5, cupOrder: [0, 1, 2, 3], cupPositions: positionsRectangle(rect, 180), rounds: 5 };
+      config = { cupCount: 4, swapCount: 5, cupOrder: [0, 1, 2, 3], cupPositions: positionsRectangle(rect, 180), rounds: 5 };
     }
     wrap.remove();
     
     const startPlayback = () => {
       Object.assign(iframe.style, { pointerEvents: "none" });
+      camera.start();
       playVideo();
       unMuteVideo();
       startTimer();
@@ -465,7 +461,7 @@ function nextRound() {
   if (rounds >= config.rounds) {
     endMiniGame();
   } else {
-    gamestart(); // 次のラウンドを開始
+    gamestart();
   }
 }
 
@@ -534,6 +530,8 @@ function positionsRectangle(rect, offset) {
 }
 
 function gamestart() {
+  clearBoard();
+  cups = createCups(config.cupCount);
   gazePenaltyRaw = 0;
   ballIndex = Math.floor(Math.random() * cups.length);
   cupOrder = Array.from({ length: config.cupOrder.length }, (_, i) => i);
@@ -553,7 +551,6 @@ function gamestart() {
     cups.forEach(cup => cup.style.backgroundColor = "gray");
     shuffleCups(config.swapCount);
   }, 3000);
-  console.log("start");
 }
 
 function shuffleCups(count) {
@@ -594,11 +591,11 @@ function enableCupClick() {
       if (i === ballIndex) {
         corrects++;
         roundScore = baseScore - penalty;
-        cup.style.backgroundColor = "red";
+        cup.style.backgroundColor = "blue";
       } else {
         misses++;
         roundScore = -penalty;
-        cups[ballIndex].style.backgroundColor = "red";
+        cups[ballIndex].style.backgroundColor = "blue";
       }
       score += Math.max(0, roundScore);
       cups.forEach(c => c.style.pointerEvents = 'none');
