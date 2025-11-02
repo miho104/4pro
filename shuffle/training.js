@@ -183,8 +183,8 @@ function isLookingCenter(landmarks) {
 }
 // ================== 視線予測・最適化版 ==================
 
-let lastBgLightness = 50;
-let targetBgLightness = 50;
+let lastBgLightness = 0;
+let targetBgLightness = 0;
 let lastUpdate = performance.now();
 
 const faceMesh = new FaceMesh({
@@ -450,7 +450,6 @@ function runRound() {
     return;
   }
   rounds++;
-  currentRoundTargetSizes = [];
   currentRoundStartMs = performance.now();
   gamestart();
 }
@@ -548,7 +547,7 @@ function gamestart() {
 
   });
 
-  cups[ballIndex].style.backgroundColor = "red";
+  cups[ballIndex].style.backgroundColor = "blue";
 
   setTimeout(() => {
     cups.forEach(cup => cup.style.backgroundColor = "gray");

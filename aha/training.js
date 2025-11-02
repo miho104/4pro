@@ -383,7 +383,6 @@ window.addEventListener("DOMContentLoaded", () => {
                         console.log("ミニゲーム間隔:", intervalSeconds, "秒");            startArea.innerHTML = "";
 
             showDifficultyUI();
-            camera.start();
         } else {
             alert("正しい数値を入力してください");
         }
@@ -430,6 +429,7 @@ function showConfirmUI() {
         console.log("clicked")
         const startPlayback = () => {
             Object.assign(iframe.style, { pointerEvents: "none" });
+            camera.start();
             playVideo();
             unMuteVideo();
             startMiniGame();
@@ -771,7 +771,7 @@ function nextAhaStep() {
     clearSelectionHighlights();
 
             if (ahaRounds >= AHA.roundCount) {
-                endAhaGame();
+                setTimeout(endAhaGame(),AHA.afterAnswerFreezeMs+500);
             } else {
                 ahaActive = false; // 入力を一時的に無効化
                 setTimeout(() => {
