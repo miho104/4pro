@@ -297,7 +297,7 @@ let preselectedDir = null; // 2段階選択用の方向
 const AHA = {
     morphMs:5000,             // 色変化にかける時間
     popinMs: 7000,              // 新規出現のフェード時間
-    afterAnswerFreezeMs: 1500, // 回答後のフラッシュ演出時間
+    afterAnswerFreezeMs: 1500, // 回答演出時間
     roundCount: 3,             // 1ミニゲーム内のラウンド数
     chooseMode: () => (Math.random() < 0.5 ? "popin" : "colormorph"),
 };
@@ -786,7 +786,8 @@ function nextAhaStep() {
 }
 
 function endAhaGame() {
-    document.getElementById('hourglass-container').style.display = 'block'; //砂時計を表示
+    clearBoard();
+    document.getElementById('hourglass-container').style.display = 'block'; //砂時計表示
     startTimer();
     ahaActive = false;
     preselectedDir = null;
@@ -796,9 +797,6 @@ function endAhaGame() {
         window.removeEventListener("keydown", ahaKeydownBound);
         ahaKeydownBound = null;
     }
-    setTimeout(() => {
-        clearBoard();
-    }, AHA.afterAnswerFreezeMs + 200);
 }
 
 function startMiniGame() {
