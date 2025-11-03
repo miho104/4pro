@@ -336,11 +336,11 @@ function unMuteVideo() { if (playerReady) {
 //タイマー
 function startTimer() {
     if (running) return;
-    startTime = performance.now() - pausedAt; // 再開時はpauseした位置から
+    startTime = performance.now() - pausedAt;//再開時はpauseした位置から
     running = true;
     timerId = requestAnimationFrame(tick);
-    nextIntervalTime = intervalSeconds; // 最初の目標時間
-    console.log("timer start")//デバック用
+    nextIntervalTime = intervalSeconds;//目標時間
+    console.log("timer start"+nextIntervalTime)//デバック用
 }
 
 function pauseTimer() {
@@ -353,11 +353,11 @@ function pauseTimer() {
 
 function tick() {
     if (!running) return;
-    const elapsed = (performance.now() - startTime) / 1000; // 秒
+    const elapsed = (performance.now() - startTime) / 1000;//秒
 
     if (elapsed >= nextIntervalTime) {
         console.log("指定間隔到達:", nextIntervalTime, "秒");
-        startMiniGame();
+        startMiniGame();//2回目以降のミニゲーム
         nextIntervalTime += intervalSeconds;
     }
 
@@ -787,7 +787,8 @@ function nextAhaStep() {
 
 function endAhaGame() {
     clearBoard();
-    document.getElementById('hourglass-container').style.display = 'block'; //砂時計表示
+    document.getElementById('hourglass-container').style.display = 'block'; //後で砂時計を表示
+    pausedAt = 0;
     startTimer();
     ahaActive = false;
     preselectedDir = null;
@@ -800,6 +801,7 @@ function endAhaGame() {
 }
 
 function startMiniGame() {
+    pauseTimer();
     ahaActive = true;
     ahaRounds = 0;
     currentRoundStartMs = performance.now();
