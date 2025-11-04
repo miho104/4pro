@@ -236,8 +236,9 @@ faceMesh.onResults((results) => {
 
         const THRESHOLD_WARN = 0.12;
         const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
-        const lightness = 50 * deviationRatio;
-        document.body.style.backgroundColor = `hsl(0, 100%, ${lightness}%)`;
+        const saturation = 95 * deviationRatio;
+        const lightness = 26 * deviationRatio;
+        document.body.style.backgroundColor = `hsl(0, ${saturation}%, ${lightness}%)`;
     }
 });
 
@@ -728,7 +729,7 @@ function highlightElement(el, isCorrect, shouldScale = false) {
     const originalStrokeWidth = child.getAttribute("stroke-width");
     const originalTransform = el.getAttribute("transform") || "";
 
-    child.setAttribute("stroke", isCorrect ? "#10d1cf" : "#ff4040");
+    child.setAttribute("stroke", isCorrect ? "#10d1cf" : "#ffffff");
     child.setAttribute("stroke-width", "5");
 
     if (shouldScale) {
