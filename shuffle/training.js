@@ -202,7 +202,7 @@ faceMesh.onResults((results) => {
   const leftClosed = isEyeClosed(landmarks, true);
   const rightClosed = isEyeClosed(landmarks, false);
   if (leftClosed && rightClosed) {
-    blinkCooldown = 2;//瞬きクールダウン
+    blinkCooldown = 5;//瞬きクールダウン
     return;
   }
   if (blinkCooldown > 0) {
@@ -480,11 +480,11 @@ document.getElementById("btn-stop")?.addEventListener("click", (e) => {
   const btn = e.currentTarget;
   if (btn.dataset.state === "playing") {
     pauseVideo();
-    //pauseTimer();
+    pauseTimer();
     btn.dataset.state = "paused";
   } else {
     playVideo();
-    //startTimer();
+    startTimer();
     btn.dataset.state = "playing";
   }
 });

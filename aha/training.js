@@ -194,7 +194,7 @@ faceMesh.onResults((results) => {
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
             console.log("まばたき検出");
-            blinkCooldown =3; // クールダウン
+            blinkCooldown =5; // クールダウン
             return;
         }
 
@@ -456,11 +456,11 @@ document.getElementById("btn-stop")?.addEventListener("click", (e) => {
     const btn = e.currentTarget;
     if (btn.dataset.state === "playing") {
         pauseVideo();
-        if(running=! null)pauseTimer();
+        pauseTimer();
         btn.dataset.state = "paused";
     } else {
         playVideo();
-        if(running=! null)startTimer();
+        startTimer();
         btn.dataset.state = "playing";
     }
 });

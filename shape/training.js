@@ -193,7 +193,7 @@ faceMesh.onResults((results) => {
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
             console.log("まばたき検出");
-            blinkCooldown =3; // クールダウン
+            blinkCooldown =5; // クールダウン
             return;
         }
 
@@ -451,9 +451,11 @@ function showConfirmUI() {
 }
 // ミニゲーム進行
 function startMiniGame() {
+    pauseTimer();
     if (gameActive) return;
     gameActive = true;
     rounds = 0;
+    document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
     if (!targetShape) targetShape = randItem(SHAPES);
     runRound();
 }
@@ -466,12 +468,16 @@ function runRound() {
     rounds++;
     currentRoundTargetSizes = [];
     currentRoundStartMs = performance.now();
+    document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
     makeBoard();
 }
 
 function endMiniGame() {
     clearBoard();
+    document.getElementById('hourglass-container').style.display = 'block';
     gameActive = false;
+    pausedAt = 0;
+    startTimer();
     console.log("ミニゲーム終了");
 }
 
@@ -629,13 +635,13 @@ function onPick() {
             const sizeComponent = Math.floor(Math.round(10000 * sizeFactor) / 100) * 100;
 
             //クリア速度加点
-            const speedComponent =Math.floor(Math.max(500, Math.round(12000 - clearMs))/ 100) * 100;
+            const speedComponent =Math.floor(Math.max(500, Math.round(12000 - clearMs))/ 100) * 100;//7秒以上かけたら最低保証
 
             // 視線ズレ減点
-            const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.005) / 100) * 100;
+            const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.005) / 100) * 100;//max 7200
 
             //図形ミス減点
-            const misspenalty = misses * 500;
+            const misspenalty = misses * 500;//1ミス-500
 
             const roundScore = Math.max(0, sizeComponent + speedComponent - penalty -misspenalty);
             score += roundScore;
