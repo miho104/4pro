@@ -202,6 +202,7 @@ faceMesh.onResults((results) => {
   const leftClosed = isEyeClosed(landmarks, true);
   const rightClosed = isEyeClosed(landmarks, false);
   if (leftClosed && rightClosed) {
+    console.log("瞬き検知");
     blinkCooldown = 5;//瞬きクールダウン
     return;
   }
@@ -240,21 +241,10 @@ faceMesh.onResults((results) => {
 
   const THRESHOLD_WARN = 0.12;
   const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
-  targetBgLightness = 50 * deviationRatio;
+  const saturation = 95 * deviationRatio;
+  const lightness = 26 * deviationRatio;
+  document.body.style.backgroundColor = `hsl(0, ${saturation}%, ${lightness}%)`;
 });
-
-function animateBg() {
-  const now = performance.now();
-  const dt = now - lastUpdate;
-  lastUpdate = now;
-
-  const lerpFactor = 1 - Math.exp(-dt / 250);
-  lastBgLightness += (targetBgLightness - lastBgLightness) * lerpFactor;
-
-  document.body.style.backgroundColor = `hsl(0, 100%, ${lastBgLightness}%)`;
-  requestAnimationFrame(animateBg);
-}
-animateBg();
 
 const camera = new Camera(video, {
   onFrame: async () => {
