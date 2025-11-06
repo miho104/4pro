@@ -229,7 +229,7 @@ faceMesh.onResults((results) => {
             console.log("再キャリブレーション完了");
         }
 
-        const { state, smoothDiff, diffL, diffR, dYaw, dPitch } = isLookingCenter(landmarks);
+        const { smoothDiff } = isLookingCenter(landmarks);
         //console.log(`[Gaze] state=${state} diff=${smoothDiff.toFixed(4)} L=${diffL.toFixed(4)} R=${diffR.toFixed(4)} dYaw=${(dYaw*57.3).toFixed(1)} dPitch=${(dPitch*57.3).toFixed(1)}`);
 
         gazePenaltyRaw += smoothDiff;

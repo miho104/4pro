@@ -235,8 +235,9 @@ faceMesh.onResults((results) => {
 
         const THRESHOLD_WARN = 0.12;
         const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
-        const lightness = 50 * deviationRatio;
-        document.body.style.backgroundColor = `hsl(0, 100%, ${lightness}%)`;
+        const saturation = 95 * deviationRatio;
+        const lightness = 26 * deviationRatio;
+        document.body.style.backgroundColor = `hsl(0, ${saturation}%, ${lightness}%)`;
     }
 });
 
@@ -591,7 +592,7 @@ function rebuildZoneSvgs(zones) {
             width: `${z.w}px`, height: `${z.h}px`,
             zIndex: '1001',
             pointerEvents: 'none',
-            outline: "1px dashed rgba(0,255,0,.35)"//デバック用
+            //outline: "1px dashed rgba(0,255,0,.35)"//デバック用
         });
         document.body.appendChild(s);
         zoneSvgs.push({ svg: s, rect: z, busy: false });
