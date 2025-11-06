@@ -260,7 +260,7 @@ const camera = new Camera(video, {
   onFrame: async () => {
     frameCounter++;
 
-    if (frameCounter % 6 === 0) {
+    if (frameCounter % 3 === 0) {
       await faceMesh.send({ image: video });
     }
   },
@@ -498,7 +498,7 @@ document.getElementById("btn-end")?.addEventListener("click", () => {
   const totalPicks = corrects + misses;
   alert([
     `終了！`,
-    `正解: ${corrects} / ミス: ${misses}（正解率 ${(totalPicks ? (hits / totalPicks * 100) : 0).toFixed(1)}%）`,
+    `正解: ${corrects} / ミス: ${misses}（正解率 ${(totalPicks ? (corrects / totalPicks * 100) : 0).toFixed(1)}%）`,
     `総合スコア: ${score.toLocaleString()}`
   ].join('\n'));
   clearBoard();
