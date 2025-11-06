@@ -889,7 +889,7 @@ function rebuildZoneSvgs(zones) {
             width: `${z.w}px`, height: `${z.h}px`,
             zIndex: '1001',
             pointerEvents: 'none',
-            outline: "1px dashed rgba(0,255,0,.35)" // デバッグ線
+            //outline: "1px dashed rgba(0,255,0,.35)" // デバッグ線
         });
         document.body.appendChild(s);
         zoneSvgs.push({ svg: s, rect: z, busy: false });

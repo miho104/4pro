@@ -75,7 +75,6 @@ function isEyeClosed(landmarks, isLeft = true) {
     top = landmarks[386]; bottom = landmarks[374];
   }
   const verticalDist = Math.abs(bottom.y - top.y);
-  //console.log(verticalDist);
   return verticalDist < 0.02;
 }
 
@@ -434,9 +433,11 @@ function showDifficultyUI() {
 }
 //ミニゲーム進行
 function startMiniGame() {
+  pauseTimer();
   if (gameActive) return;
   gameActive = true;
   rounds = 0;
+  document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
   runRound();
 }
 
@@ -452,7 +453,10 @@ function runRound() {
 
 function endMiniGame() {
   clearBoard();
+  document.getElementById('hourglass-container').style.display = 'block';
   gameActive = false;
+  pausedAt = 0;
+  startTimer();
   console.log("ミニゲーム終了");
 }
 
@@ -584,9 +588,10 @@ function getTwoDifferentIndexes() {
 function enableCupClick() {
   cups.forEach((cup, i) => {
     cup.addEventListener("click", () => {
+      ///スコア計算
       let roundScore = 0;
-      const baseScore = 1000;// 基本点
-      const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.005) / 100) * 100; // 視線ペナルティ
+      const baseScore = 3000;// 基本点
+      const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.005) / 100) * 100; //gazePenaltyRawのmaxは約1.2 max7200ぐらい
 
       if (i === ballIndex) {
         corrects++;
