@@ -22,6 +22,12 @@
         <button id="btn-recalib" type="button">キャリブレーション</button>
     </div>
 
+    <div id="hourglass-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: none;">
+        <svg width="80" height="80" viewBox="0 0 100 100">
+            <path d="M 10 10 L 90 10 L 50 50 L 90 90 L 10 90 L 50 50 Z" fill="white" stroke="none"/>
+        </svg>
+    </div>
+
     <svg id="board" class="board" aria-label="ゲーム盤"></svg>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
