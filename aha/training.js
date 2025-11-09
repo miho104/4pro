@@ -262,7 +262,7 @@ const SIZES  = [80, 100, 120];
 const AVOID_PAD = 16;
 const CELL_INSET = 10;
 const MIN_CELL_WH = 30;
-const TARGET_TOTAL_CELLS = 20;
+const TARGET_TOTAL_CELLS = 22;
 
 let score = 0;
 let corrects = 0;
@@ -282,6 +282,7 @@ let duration = 0;
 let ahaTargetElement = null;
 
 let rounds = 0;
+let maxShapes =7;
 let timerId = null;
 let startTime = null;
 let pausedAt = 0;
@@ -407,9 +408,9 @@ function showDifficultyUI() {
 
     function pick(level) {
         difficulty = level;
-        if (level === "easy") config = { rounds: 3};
-        if (level === "normal") config = { rounds: 3};
-        if (level === "hard") config = { rounds: 5};
+        if (level === "easy") config = { rounds: 3 , maxShapes:7};
+        if (level === "normal") config = { rounds: 3,maxShapes:10};
+        if (level === "hard") config = { rounds: 5,maxShapes:12};
         wrap.remove();
         showConfirmUI();
     }
@@ -583,7 +584,6 @@ function startColorMorph(zoneIndex) {
 function startAhaRound() {
     ahaActive = true;
     makeBoard();
-    const maxShapes = 6;
     const shuffledZones = [...zoneSvgs].sort(() => 0.5 - Math.random());
     const zonesToFill = shuffledZones.slice(0, Math.min(maxShapes, shuffledZones.length));
 
