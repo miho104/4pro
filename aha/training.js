@@ -261,8 +261,8 @@ const SIZES  = [80, 100, 120];
 
 const AVOID_PAD = 16;
 const CELL_INSET = 10;
-const MIN_CELL_WH = 44;
-const TARGET_TOTAL_CELLS = 12;
+const MIN_CELL_WH = 30;
+const TARGET_TOTAL_CELLS = 20;
 
 let score = 0;
 let corrects = 0;
@@ -889,7 +889,7 @@ function rebuildZoneSvgs(zones) {
             width: `${z.w}px`, height: `${z.h}px`,
             zIndex: '1001',
             pointerEvents: 'none',
-            //outline: "1px dashed rgba(0,255,0,.35)" // デバッグ線
+            outline: "1px dashed rgba(0,255,0,.35)" // デバッグ線
         });
         document.body.appendChild(s);
         zoneSvgs.push({ svg: s, rect: z, busy: false });
@@ -942,7 +942,21 @@ function buildZonesByGuides() {
         for (const cell of cells) next.push(...cutOutCellByObstacle(cell, cut));
         cells = next;
     }
-    return cells
+
+    const finalCells = [];
+    for (const cell of cells) {
+        if (cell.w > cell.h * 1.8 && cell.w > MIN_CELL_WH * 2.5) {
+            const halfW = cell.w / 2;
+            const newCell1 = { x: cell.x, y: cell.y, w: halfW, h: cell.h };
+            const newCell2 = { x: cell.x + halfW, y: cell.y, w: halfW, h: cell.h };
+            if (newCell1.w >= MIN_CELL_WH) finalCells.push(newCell1);
+            if (newCell2.w >= MIN_CELL_WH) finalCells.push(newCell2);
+        } else {
+            finalCells.push(cell);
+        }
+    }
+
+    return finalCells
     .filter(c => c.w >= 80 && c.h >= 80)
     .slice(0, TARGET_TOTAL_CELLS);
 }
