@@ -901,8 +901,8 @@ function buildZonesByGuides() {
     const v = getVideoRect();
     const c = getControlsRect();
 
-    const xs = new Set([0, W]);
-    const ys = new Set([0, H]);
+    const xs = new Set([0, W, W / 2]);
+    const ys = new Set([0, H, H / 2]);
 
     [v].forEach(r => {
         xs.add(Math.max(0, Math.round(r.x - AVOID_PAD)));
