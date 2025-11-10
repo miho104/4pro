@@ -194,7 +194,7 @@ faceMesh.onResults((results) => {
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
             console.log("まばたき検出");
-            blinkCooldown =5; // クールダウン
+            blinkCooldown =5;//クールダウン
             return;
         }
 
@@ -245,7 +245,7 @@ faceMesh.onResults((results) => {
 const camera = new Camera(video, {
     onFrame: async () => {
         frameCounter++;
-        if (frameCounter % 3 === 0) { // 3フレームに1回だけ実行
+        if (frameCounter % 3 === 0) {//3フレームに1回実行
             await faceMesh.send({ image: video });
         }
         //await faceMesh.send({ image: video });
@@ -292,14 +292,14 @@ let ahaActive = false;
 let ahaRounds = 0;
 let ahaCorrectDir = null;// "up" | "down" | "left" | "right"
 let ahaCleanup = null;
-let ahaKeydownBound = null; // ハンドラ退避
-let preselectedDir = null; // 2段階選択用の方向
+let ahaKeydownBound = null;//ハンドラ退避
+let preselectedDir = null;//2段階選択用の方向
 
 const AHA = {
-    morphMs:5000,             // 色変化にかける時間
-    popinMs: 7000,              // 新規出現のフェード時間
-    afterAnswerFreezeMs: 1500, // 回答演出時間
-    roundCount: 3,             // 1ミニゲーム内のラウンド数
+    morphMs:5000,// 色変化にかける時間
+    popinMs: 7000,// 新規出現のフェード時間
+    afterAnswerFreezeMs: 1500,// 回答演出時間
+    roundCount: 3,// 1ミニゲーム内のラウンド数
     chooseMode: () => (Math.random() < 0.5 ? "popin" : "colormorph"),
 };
 
@@ -589,14 +589,15 @@ function startAhaRound() {
 
     zonesToFill.forEach(z => {
         const type = randItem(SHAPES);
-        const size = randItem(SIZES) * 0.9;
         const color = randItem(COLORS);
-        const pad = size / 2 + 6;
+        const baseDim = Math.min(z.rect.w, z.rect.h);
+        const scaleOnHighlight = 1.2;//拡大率
+        const paddingRatio = 0.95;
+        const size = (baseDim / scaleOnHighlight) * paddingRatio;
 
-        if (z.rect.w < 2 * pad || z.rect.h < 2 * pad) return;
+        const x = z.rect.w / 2;
+        const y = z.rect.h / 2;
 
-        const x = randInt(pad, z.rect.w - pad);
-        const y = randInt(pad, z.rect.h - pad);
         const g = svg("g", { class: "shape" });
 
         g.dataset.type = type;
