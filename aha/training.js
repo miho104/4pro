@@ -283,7 +283,6 @@ let ahaTargetElement = null;
 
 let rounds = 0;
 let maxShapes =7;
-let timerId = null;
 let startTime = null;
 let pausedAt = 0;
 let running = null;
@@ -408,9 +407,9 @@ function showDifficultyUI() {
 
     function pick(level) {
         difficulty = level;
-        if (level === "easy") config = { rounds: 3 , maxShapes:7};
-        if (level === "normal") config = { rounds: 3,maxShapes:10};
-        if (level === "hard") config = { rounds: 5,maxShapes:12};
+        if (level === "easy") config = { rounds: 3, maxShapes: 7 };
+        if (level === "normal") config = { rounds: 5, maxShapes: 10 };
+        if (level === "hard") config = { rounds: 5, maxShapes: 12 };
         wrap.remove();
         showConfirmUI();
     }
@@ -585,6 +584,7 @@ function startAhaRound() {
     ahaActive = true;
     makeBoard();
     const shuffledZones = [...zoneSvgs].sort(() => 0.5 - Math.random());
+    const maxShapes = Math.min(zoneSvgs.length, config.maxShapes);
     const zonesToFill = shuffledZones.slice(0, Math.min(maxShapes, shuffledZones.length));
 
     zonesToFill.forEach(z => {
@@ -772,7 +772,7 @@ function nextAhaStep() {
     clearSelectionHighlights();
     ahaActive = false;
 
-    if (ahaRounds >= AHA.roundCount) {
+    if (ahaRounds >= config.rounds) {
         setTimeout(() => {
             endAhaGame();
         }, AHA.afterAnswerFreezeMs + 500);
