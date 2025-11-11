@@ -257,7 +257,7 @@ const camera = new Camera(video, {
 // =================== ゲーム本体 ===================
 const SHAPES = ["circle", "triangle", "square", "star", "pentagon"];
 const COLORS = ["#f87171", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#f472b6"];
-const SIZES  = [80, 100, 120];
+const SIZES  = [60, 80, 100];
 
 const AVOID_PAD = 16;
 const CELL_INSET = 10;
@@ -590,10 +590,7 @@ function startAhaRound() {
     zonesToFill.forEach(z => {
         const type = randItem(SHAPES);
         const color = randItem(COLORS);
-        const baseDim = Math.min(z.rect.w, z.rect.h);
-        const scaleOnHighlight = 1.2;//拡大率
-        const paddingRatio = 0.95;
-        const size = (baseDim / scaleOnHighlight) * paddingRatio;
+        const size = randItem(SIZES);
 
         const x = z.rect.w / 2;
         const y = z.rect.h / 2;
@@ -734,13 +731,15 @@ function highlightElement(el, isCorrect, shouldScale = false) {
     child.setAttribute("stroke-width", "5");
 
     if (shouldScale) {
+        el.style.transformOrigin = "center";
         el.setAttribute("transform", `${originalTransform} scale(1.2)`);
         el.style.transition = "transform 0.2s ease-out";
 
     setTimeout(() => {
         if (originalStroke) {
             child.setAttribute("stroke", originalStroke);
-        } else {
+        }
+        else {
             child.removeAttribute("stroke");
         }
         if (originalStrokeWidth) {
@@ -749,6 +748,7 @@ function highlightElement(el, isCorrect, shouldScale = false) {
         if (shouldScale) {
             el.setAttribute("transform", originalTransform);
             el.style.transition = "";
+            el.style.transformOrigin = "";
         }
         }, AHA.afterAnswerFreezeMs);
     }
