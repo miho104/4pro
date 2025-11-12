@@ -688,19 +688,19 @@ function onAhaKeyDown(ev) {
     else if (key === "arrowright" || key === "d") dir = "right";
     if (!dir) return;
 
-        if (dir === preselectedDir) {
-            const correct = (dir === ahaCorrectDir);
-            highlightElement(ahaTargetElement, false);
-            clearSelectionHighlights();
+    if (dir === preselectedDir) {
+        const correct = (dir === ahaCorrectDir);
+        clearSelectionHighlights();
 
         if (correct) {
             corrects++;
-            highlightElement(ahaTargetElement, false, true);
+            highlightElement(ahaTargetElement); // 正解のハイライト
         } else {
             misses++;
-            smallShake();//360
+            smallShake();
+            // 不正解時は、少し遅れて正解の図形を点滅させる
             setTimeout(() => {
-                highlightElement(ahaTargetElement, false, true);
+                highlightElement(ahaTargetElement);
             }, 400);
         }
         // スコア計算
@@ -719,39 +719,33 @@ function onAhaKeyDown(ev) {
         highlightSelection(dir);
     }
 }
+
 //正解不正解ハイライト
-function highlightElement(el, isCorrect, shouldScale = false) {
+function highlightElement(el) { // isCorrect 引数は不要に
     if (!el || !el.firstElementChild) return;
     const child = el.firstElementChild;
+
     const originalStroke = child.getAttribute("stroke");
     const originalStrokeWidth = child.getAttribute("stroke-width");
-    const originalTransform = el.getAttribute("transform") || "";
-
-    child.setAttribute("stroke", isCorrect ? "#10d1cf" : "#ffffff");
     child.setAttribute("stroke-width", "5");
 
-    if (shouldScale) {
-        el.style.transformOrigin = "center";
-        el.setAttribute("transform", `${originalTransform} scale(1.2)`);
-        el.style.transition = "transform 0.2s ease-out";
-
-    setTimeout(() => {
-        if (originalStroke) {
-            child.setAttribute("stroke", originalStroke);
+    let flashCount = 0;
+    const maxFlashes = 6;//3回点滅
+    const intervalId = setInterval(() => {
+        child.setAttribute("stroke", (flashCount % 2 === 0) ? "#ffffff" : (originalStroke || "none"));
+        flashCount++;
+        if (flashCount >= maxFlashes) {
+            clearInterval(intervalId);
+            if (originalStroke) {
+                child.setAttribute("stroke", originalStroke);
+            } else {
+                child.removeAttribute("stroke");
+            }
+            if (originalStrokeWidth) {
+                child.setAttribute("stroke-width", originalStrokeWidth);
+            }
         }
-        else {
-            child.removeAttribute("stroke");
-        }
-        if (originalStrokeWidth) {
-            child.setAttribute("stroke-width", originalStrokeWidth);
-        }
-        if (shouldScale) {
-            el.setAttribute("transform", originalTransform);
-            el.style.transition = "";
-            el.style.transformOrigin = "";
-        }
-        }, AHA.afterAnswerFreezeMs);
-    }
+    }, 100);
 }
 
 function smallShake() {
