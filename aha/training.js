@@ -529,10 +529,11 @@ function setFillOfGroup(g, color) {
 function spawnPopIn(zoneIndex, type, size) {
     const z = zoneSvgs[zoneIndex];
     if (!z) return null;
-    const pad = size / 2 + 6;
-    if (z.rect.w < 2 * pad || z.rect.h < 2 * pad) return null;
-    const x = randInt(pad, z.rect.w - pad);
-    const y = randInt(pad, z.rect.h - pad);
+
+    const size=randItem(SIZES);
+    const x = z.rect.w / 2;
+    const y = z.rect.h / 2;
+
     const g = svg("g", { class: "shape" });
     g.dataset.type = type;
     g.setAttribute("transform", `rotate(${randInt(0, 359)}, ${x}, ${y})`);
@@ -694,13 +695,13 @@ function onAhaKeyDown(ev) {
 
         if (correct) {
             corrects++;
-            highlightElement(ahaTargetElement); // 正解のハイライト
+            highlightElement(ahaTargetElement, true);
         } else {
             misses++;
             smallShake();
-            // 不正解時は、少し遅れて正解の図形を点滅させる
+            // 不正解時は、少し遅れて正解の図形をハイライト
             setTimeout(() => {
-                highlightElement(ahaTargetElement);
+                highlightElement(ahaTargetElement, true);
             }, 400);
         }
         // スコア計算
@@ -721,21 +722,22 @@ function onAhaKeyDown(ev) {
 }
 
 //正解不正解ハイライト
-function highlightElement(el) { // isCorrect 引数は不要に
+function highlightElement(el, shouldScale = false) {
     if (!el || !el.firstElementChild) return;
     const child = el.firstElementChild;
-
     const originalStroke = child.getAttribute("stroke");
     const originalStrokeWidth = child.getAttribute("stroke-width");
+    const originalTransform = el.getAttribute("transform") || "";
+
+    child.setAttribute("stroke", "#ffffff");
     child.setAttribute("stroke-width", "5");
 
-    let flashCount = 0;
-    const maxFlashes = 6;//3回点滅
-    const intervalId = setInterval(() => {
-        child.setAttribute("stroke", (flashCount % 2 === 0) ? "#ffffff" : (originalStroke || "none"));
-        flashCount++;
-        if (flashCount >= maxFlashes) {
-            clearInterval(intervalId);
+    if (shouldScale) {
+        el.style.transformOrigin = "center";
+        el.setAttribute("transform", `${originalTransform} scale(1.2)`);
+        el.style.transition = "transform 0.2s ease-out";
+
+        setTimeout(() => {
             if (originalStroke) {
                 child.setAttribute("stroke", originalStroke);
             } else {
@@ -744,8 +746,13 @@ function highlightElement(el) { // isCorrect 引数は不要に
             if (originalStrokeWidth) {
                 child.setAttribute("stroke-width", originalStrokeWidth);
             }
-        }
-    }, 100);
+            if (shouldScale) {
+                el.setAttribute("transform", originalTransform);
+                el.style.transition = "";
+                el.style.transformOrigin = "";
+            }
+        }, AHA.afterAnswerFreezeMs);
+    }
 }
 
 function smallShake() {
@@ -767,17 +774,19 @@ function nextAhaStep() {
     clearSelectionHighlights();
     ahaActive = false;
 
+    const delay = AHA.afterAnswerFreezeMs + 200;
+
     if (ahaRounds >= config.rounds) {
         setTimeout(() => {
             endAhaGame();
-        }, AHA.afterAnswerFreezeMs + 500);
+        }, delay);
     } else {
         // 次のラウンドへ
         setTimeout(() => {
             ahaActive = true;
             currentRoundStartMs = performance.now();
             startAhaRound();
-        }, AHA.afterAnswerFreezeMs + 500);
+        }, delay);
     }
 }
 
