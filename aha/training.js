@@ -526,7 +526,7 @@ function setFillOfGroup(g, color) {
     if (child) child.setAttribute("fill", color);
 }
 
-function spawnPopIn(zoneIndex, type, size) {
+function spawnPopIn(zoneIndex, type) {
     const z = zoneSvgs[zoneIndex];
     if (!z) return null;
 
@@ -648,8 +648,7 @@ function startAhaRound() {
 
     if (mode === "popin") {
         const type = randItem(SHAPES);
-        const size = randItem(SIZES);
-        ahaTargetElement = spawnPopIn(zoneIndex, type, size);
+        ahaTargetElement = spawnPopIn(zoneIndex, type);
         if (ahaTargetElement) {
             zoneSvgs[zoneIndex].busy = true;
         } else {
