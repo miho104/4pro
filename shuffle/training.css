@@ -55,7 +55,7 @@ input[type=number]::-webkit-outer-spin-button {
 }
 .cup:hover {
   outline: 4px solid white;
-  outline-offset: 8px;
+  outline-offset: 20px;
   transform: scale(1.05);
 }
 .cup:active{ transform: translateY(1px); }
