@@ -530,7 +530,6 @@ function spawnPopIn(zoneIndex, type) {
     const z = zoneSvgs[zoneIndex];
     if (!z) return null;
 
-    const size=randItem(SIZES);
     const x = z.rect.w / 2;
     const y = z.rect.h / 2;
 
@@ -651,19 +650,11 @@ function startAhaRound() {
         ahaTargetElement = spawnPopIn(zoneIndex, type);
         if (ahaTargetElement) {
             zoneSvgs[zoneIndex].busy = true;
-        } else {
-            console.warn(`Pop-in failed for zone ${zoneIndex}. Skipping round.`);
-            setTimeout(nextAhaStep, 100);
-            return;
         }
     } else {
         morphCtrl = startColorMorph(zoneIndex);
         if (morphCtrl) {
             ahaTargetElement = morphCtrl.group;
-        } else {
-            console.warn(`Color morph failed for zone ${zoneIndex}. Skipping round.`);
-            setTimeout(nextAhaStep, 100);
-            return;
         }
     }
 
@@ -694,13 +685,13 @@ function onAhaKeyDown(ev) {
 
         if (correct) {
             corrects++;
-            highlightElement(ahaTargetElement, true);
+            highlightElement(ahaTargetElement, true, true);
         } else {
             misses++;
             smallShake();
             // 不正解時は、少し遅れて正解の図形をハイライト
             setTimeout(() => {
-                highlightElement(ahaTargetElement, true);
+                highlightElement(ahaTargetElement, true, true);
             }, 400);
         }
         // スコア計算
@@ -721,14 +712,14 @@ function onAhaKeyDown(ev) {
 }
 
 //正解不正解ハイライト
-function highlightElement(el, shouldScale = false) {
+function highlightElement(el, isCorrect, shouldScale = false) {
     if (!el || !el.firstElementChild) return;
     const child = el.firstElementChild;
     const originalStroke = child.getAttribute("stroke");
     const originalStrokeWidth = child.getAttribute("stroke-width");
     const originalTransform = el.getAttribute("transform") || "";
 
-    child.setAttribute("stroke", "#ffffff");
+    child.setAttribute("stroke", "#ffffff"); // 枠線を白に
     child.setAttribute("stroke-width", "5");
 
     if (shouldScale) {
