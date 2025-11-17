@@ -427,15 +427,16 @@ function showConfirmUI() {
     startArea.appendChild(btnConfirm);
 
     btnConfirm.addEventListener('click', () => {
-        console.log("clicked")
+        console.log("clicked");
+        btnConfirm.remove(); // 先にボタンを削除
+        document.getElementById('target-overlay')?.remove();
+
         const startPlayback = () => {
             Object.assign(iframe.style, { pointerEvents: "none" });
             camera.start();
             playVideo();
             unMuteVideo();
             startMiniGame();
-            btnConfirm.remove();
-            document.getElementById('target-overlay')?.remove();
         };
         if (playerReady) {
             startPlayback();
@@ -530,6 +531,9 @@ function spawnPopIn(zoneIndex, type) {
     const z = zoneSvgs[zoneIndex];
     if (!z) return null;
 
+    const size = randItem(SIZES);
+
+    // ゾーンの中心に配置
     const x = z.rect.w / 2;
     const y = z.rect.h / 2;
 
@@ -592,6 +596,7 @@ function startAhaRound() {
         const color = randItem(COLORS);
         const size = randItem(SIZES);
 
+        // ゾーンの中心に配置
         const x = z.rect.w / 2;
         const y = z.rect.h / 2;
 
@@ -683,23 +688,23 @@ function onAhaKeyDown(ev) {
         const correct = (dir === ahaCorrectDir);
         clearSelectionHighlights();
 
-        if (correct) {
-            corrects++;
-            highlightElement(ahaTargetElement, true, true);
-        } else {
-            misses++;
-            smallShake();
-            // 不正解時は、少し遅れて正解の図形をハイライト
-            setTimeout(() => {
-                highlightElement(ahaTargetElement, true, true);
-            }, 400);
-        }
         // スコア計算
         const clearMs = performance.now() - currentRoundStartMs;
         const speedComponent = Math.max(500, Math.round(9000 - clearMs));
         const penalty = Math.round((gazePenaltyRaw * 100) ** 2 * 0.05);
-        score += Math.max(0, speedComponent - penalty);
 
+        if (correct) {
+            corrects++;
+            score += Math.max(0, speedComponent - penalty);
+            highlightElement(ahaTargetElement, true);
+        } else {
+            misses++;
+            score += Math.max(0, -penalty);
+            smallShake();
+            setTimeout(() => {
+                highlightElement(ahaTargetElement, true);
+            }, 400);
+        }
         // ラウンド終了処理
         ahaCleanup?.();
         nextAhaStep();
@@ -712,19 +717,26 @@ function onAhaKeyDown(ev) {
 }
 
 //正解不正解ハイライト
-function highlightElement(el, isCorrect, shouldScale = false) {
+function highlightElement(el, shouldScale = false) {
     if (!el || !el.firstElementChild) return;
     const child = el.firstElementChild;
     const originalStroke = child.getAttribute("stroke");
     const originalStrokeWidth = child.getAttribute("stroke-width");
     const originalTransform = el.getAttribute("transform") || "";
 
-    child.setAttribute("stroke", "#ffffff"); // 枠線を白に
+    child.setAttribute("stroke", "#ffffff");
     child.setAttribute("stroke-width", "5");
 
     if (shouldScale) {
-        el.style.transformOrigin = "center";
-        el.setAttribute("transform", `${originalTransform} scale(1.2)`);
+        const rotateMatch = originalTransform.match(/rotate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
+        const angle = rotateMatch ? rotateMatch[1] : 0;
+        const cx = rotateMatch ? rotateMatch[2] : 0;
+        const cy = rotateMatch ? rotateMatch[3] : 0;
+        
+        const scale = 1.2;
+        const newTransform = `translate(${cx}, ${cy}) scale(${scale}) translate(${-cx}, ${-cy}) ${originalTransform}`;
+        
+        el.setAttribute("transform", newTransform);
         el.style.transition = "transform 0.2s ease-out";
 
         setTimeout(() => {
@@ -736,11 +748,8 @@ function highlightElement(el, isCorrect, shouldScale = false) {
             if (originalStrokeWidth) {
                 child.setAttribute("stroke-width", originalStrokeWidth);
             }
-            if (shouldScale) {
-                el.setAttribute("transform", originalTransform);
-                el.style.transition = "";
-                el.style.transformOrigin = "";
-            }
+            el.setAttribute("transform", originalTransform);
+            el.style.transition = "";
         }, AHA.afterAnswerFreezeMs);
     }
 }
@@ -971,7 +980,6 @@ function cutOutCellByObstacle(cell, obstacle) {
     })).filter(r => r.w >= MIN_CELL_WH && r.h >= MIN_CELL_WH);
 }
 
-
 function cutOutCellByObstacle(cell, obstacle) {
     const ov = rectOverlap(cell, obstacle);
     if (ov.w <= 0 || ov.h <= 0) return [cell];
@@ -995,7 +1003,6 @@ function rectOverlap(a, b) {
     const y1 = Math.min(a.y + a.h, b.y + b.h);
     return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
-
 
 function makeBoard() {
     for (const z of zoneSvgs) z.svg.remove();
