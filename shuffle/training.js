@@ -514,12 +514,12 @@ function positionsTriangleLike(rect, offset = 120) {
 }
 
 // 4個のとき
-function positionsRectangle(rect, offset = 100) {
+function positionsRectangle(rect, offset = 80) {
   return [
     { top: rect.y - offset, left: rect.x - rect.w / 4 },//左上
     { top: rect.y - offset, left: rect.x + (rect.w / 4) * 5 - 80 },//右上
-    { top: rect.y + rect.h + offset - 140, left: rect.x - rect.w / 4 },//左下
-    { top: rect.y + rect.h + offset - 140, left: rect.x + (rect.w / 4) * 5 - 80 }//右下
+    { top: rect.y + rect.h + offset - 120, left: rect.x - rect.w / 4 },//左下
+    { top: rect.y + rect.h + offset - 120, left: rect.x + (rect.w / 4) * 5 - 80 }//右下
   ];
 }
 
