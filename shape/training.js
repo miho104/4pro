@@ -648,7 +648,7 @@ function onPick() {
             const roundScore = Math.max(0, baseScore + speedComponent - penalty - misspenalty);
             score += roundScore;
 
-            console.log("size加点:"+sizeComponent+" 速さ加点:"+speedComponent+" 視線減点:"+penalty+"ミス:"+ misspenalty);
+            console.log(" 速さ加点:"+speedComponent+" 視線減点:"+penalty);
             setTimeout(runRound, 400);
         }
     } else {//ミスアニメーション

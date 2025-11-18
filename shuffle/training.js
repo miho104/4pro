@@ -531,7 +531,7 @@ function gamestart() {
   cupOrder = Array.from({ length: config.cupOrder.length }, (_, i) => i);
 
   cups.forEach((cup, i) => {
-    cup.style.backgroundColor = "gray";
+    cup.style.backgroundColor = "silver";
     const pos = config.cupPositions[i];
     cup.style.position = "absolute";
     cup.style.top = `${pos.top}px`;
@@ -539,10 +539,10 @@ function gamestart() {
 
   });
 
-  cups[ballIndex].style.backgroundColor = "blue";
+  cups[ballIndex].style.backgroundColor = "aquamarine";
 
   setTimeout(() => {
-    cups.forEach(cup => cup.style.backgroundColor = "gray");
+    cups.forEach(cup => cup.style.backgroundColor = "silver");
     shuffleCups(config.swapCount);
   }, 3000);
 }
