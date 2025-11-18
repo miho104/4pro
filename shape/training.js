@@ -228,7 +228,7 @@ faceMesh.onResults((results) => {
             console.log("再キャリブレーション完了");
         }
 
-        const { state, smoothDiff, diffL, diffR, dYaw, dPitch } = isLookingCenter(landmarks);
+        const { smoothDiff } = isLookingCenter(landmarks);
         //console.log(`[Gaze] state=${state} diff=${smoothDiff.toFixed(4)} L=${diffL.toFixed(4)} R=${diffR.toFixed(4)} dYaw=${(dYaw*57.3).toFixed(1)} dPitch=${(dPitch*57.3).toFixed(1)}`);
 
         gazePenaltyRaw += smoothDiff;
@@ -627,27 +627,28 @@ function onPick() {
         if (remainingTarget === 0) {
             // スコア計算
             const clearMs = performance.now() - currentRoundStartMs;
-            const avgSize = currentRoundTargetSizes.length
+            /*const avgSize = currentRoundTargetSizes.length
                 ? currentRoundTargetSizes.reduce((a, b) => a + b, 0) / currentRoundTargetSizes.length
-                : 100;
+                : 100;*/
+            const baseScore = currentRoundTargetSizes.reduce((a, b) => a + (b / MIN_SHAPE_SIZE * 1000), 0);//size80一個1000点
 
             //図形サイズ加点
-            const sizeFactor = MIN_SHAPE_SIZE / Math.max(MIN_SHAPE_SIZE, avgSize);
-            const sizeComponent = Math.floor(Math.round(10000 * sizeFactor) / 100) * 100;
+            //const sizeFactor = MIN_SHAPE_SIZE / Math.max(MIN_SHAPE_SIZE, avgSize);
+            //const sizeComponent = Math.floor(Math.round(10000 * sizeFactor) / 100) * 100;
 
             //クリア速度加点
             const speedComponent =Math.floor(Math.max(500, Math.round(12000 - clearMs))/ 100) * 100;//7秒以上かけたら最低保証
 
             // 視線ズレ減点
-            const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.005) / 100) * 100;//max 7200
+            const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.005) / 100) * 100;
 
             //図形ミス減点
             const misspenalty = misses * 500;//1ミス-500
 
-            const roundScore = Math.max(0, sizeComponent + speedComponent - penalty -misspenalty);
+            const roundScore = Math.max(0, baseScore + speedComponent - penalty - misspenalty);
             score += roundScore;
 
-            console.log("size加点:"+sizeComponent+" 速さ加点:"+speedComponent+" 視線減点:"+penalty+"ミス:"+misspenalty);
+            console.log("size加点:"+sizeComponent+" 速さ加点:"+speedComponent+" 視線減点:"+penalty+"ミス:"+ misspenalty);
             setTimeout(runRound, 400);
         }
     } else {//ミスアニメーション

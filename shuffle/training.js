@@ -586,11 +586,11 @@ function enableCupClick() {
       if (i === ballIndex) {
         corrects++;
         roundScore = baseScore - penalty;
-        cup.style.backgroundColor = "blue";
+        cup.style.backgroundColor = "aquamarine";
       } else {
         misses++;
         roundScore = -penalty;
-        cups[ballIndex].style.backgroundColor = "blue";
+        cups[ballIndex].style.backgroundColor = "aquamarine";
       }
       score += Math.max(0, roundScore);
       cups.forEach(c => c.style.pointerEvents = 'none');
