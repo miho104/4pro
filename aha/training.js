@@ -101,25 +101,24 @@ function detectFaceOutlineMovement(landmarks) {
 }
 
 function getNormalizedEyePos(landmarks, isLeft = true) {
-    if (isLeft) {
-        const inner = landmarks[133], outer = landmarks[33];
-        const top = landmarks[159], bottom = landmarks[145];
-        const iris = avg(landmarks.slice(468, 473));
-        return {
-            x: (iris.x - inner.x) / (outer.x - inner.x),
-            y: (iris.y - top.y) / (bottom.y - top.y),
-            iris
-        };
-    } else {
-        const inner = landmarks[362], outer = landmarks[263];
-        const top = landmarks[386], bottom = landmarks[374];
-        const iris = avg(landmarks.slice(473, 478));
-        return {
-            x: (iris.x - inner.x) / (outer.x - inner.x),
-            y: (iris.y - top.y) / (bottom.y - top.y),
-            iris
-        };
-    }
+    const [innerIdx, outerIdx, topIdx, bottomIdx, irisStart, irisEnd] = isLeft
+        ? [133, 33, 159, 145, 468, 473] //左目
+        : [362, 263, 386, 374, 473, 478];//右目
+
+    const inner = landmarks[innerIdx];
+    const outer = landmarks[outerIdx];
+    const top = landmarks[topIdx];
+    const bottom = landmarks[bottomIdx];
+    const iris = avg(landmarks.slice(irisStart, irisEnd));
+
+    const eyeWidth = outer.x - inner.x;
+    const eyeCenterY = (top.y + bottom.y) / 2;
+
+    return {
+        x: (iris.x - inner.x) / eyeWidth,
+        y: (iris.y - eyeCenterY) / eyeWidth,
+        iris
+    };
 }
 
 function getHeadPose(landmarks) {
@@ -235,7 +234,8 @@ faceMesh.onResults((results) => {
         gazePenaltyRaw += smoothDiff;
 
         const THRESHOLD_WARN = 0.12;
-        const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
+        let deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
+        deviationRatio = deviationRatio ** 2;
         const saturation = 95 * deviationRatio;
         const lightness = 26 * deviationRatio;
         document.body.style.backgroundColor = `hsl(0, ${saturation}%, ${lightness}%)`;
@@ -265,6 +265,7 @@ const MIN_CELL_WH = 30;
 const TARGET_TOTAL_CELLS = 22;
 
 let score = 0;
+let All_Penalty = 0;
 let corrects = 0;
 let misses = 0;
 
@@ -476,7 +477,8 @@ document.getElementById("btn-end")?.addEventListener("click", () => {
     alert([
         `終了！`,
         `正解: ${corrects} / ミス: ${misses}（正解率 ${(totalPicks ? (corrects / totalPicks * 100) : 0).toFixed(1)}%）`,
-        `総合スコア: ${score.toLocaleString()}`
+        `総合スコア: ${score.toLocaleString()}`,
+        `総ペナルティ: ${All_Penalty}`
     ].join('\n'));
     setTimeout(clearBoard, 500);
 });
@@ -690,16 +692,19 @@ function onAhaKeyDown(ev) {
 
         // スコア計算
         const clearMs = performance.now() - currentRoundStartMs;
-        const speedComponent = Math.max(500, Math.round(9000 - clearMs));
+        const speedComponent = Math.max(500, Math.round(10000 - clearMs));
         const penalty = Math.round((gazePenaltyRaw * 100) ** 2 * 0.05);
+        const baseScore = 3000;//基本点
 
         if (correct) {
             corrects++;
-            score += Math.max(0, speedComponent - penalty);
+            score += Math.max(0, baseScore + speedComponent - penalty);
+            All_Penalty += penalty;
             highlightElement(ahaTargetElement, true);
         } else {
             misses++;
             score += Math.max(0, -penalty);
+            All_Penalty += penalty;
             smallShake();
             setTimeout(() => {
                 highlightElement(ahaTargetElement, true);
