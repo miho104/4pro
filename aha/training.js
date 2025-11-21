@@ -97,13 +97,13 @@ function detectFaceOutlineMovement(landmarks) {
     const avgDist = totalDist / outline.length;
     prevOutline = outline.map(p => ({...p}));
     //console.log(avgDist);
-    return avgDist > 0.01; // 姿勢変化のしきい値 もっと大きくてもいい
+    return avgDist > 0.015; // 姿勢変化のしきい値 もっと大きくてもいい
 }
 
 function getNormalizedEyePos(landmarks, isLeft = true) {
     const [innerIdx, outerIdx, topIdx, bottomIdx, irisStart, irisEnd] = isLeft
-        ? [133, 33, 159, 145, 468, 473] //左目
-        : [362, 263, 386, 374, 473, 478];//右目
+        ? [133, 33, 159, 145, 468, 473]  // 左目
+        : [362, 263, 386, 374, 473, 478]; // 右目
 
     const inner = landmarks[innerIdx];
     const outer = landmarks[outerIdx];
@@ -112,10 +112,11 @@ function getNormalizedEyePos(landmarks, isLeft = true) {
     const iris = avg(landmarks.slice(irisStart, irisEnd));
 
     const eyeWidth = outer.x - inner.x;
+    const eyeCenterX = (inner.x + outer.x) / 2;
     const eyeCenterY = (top.y + bottom.y) / 2;
 
     return {
-        x: (iris.x - inner.x) / eyeWidth,
+        x: (iris.x - eyeCenterX) / eyeWidth,
         y: (iris.y - eyeCenterY) / eyeWidth,
         iris
     };
@@ -897,7 +898,7 @@ function rebuildZoneSvgs(zones) {
             width: `${z.w}px`, height: `${z.h}px`,
             zIndex: '1001',
             pointerEvents: 'none',
-            outline: "1px dashed rgba(0,255,0,.35)" // デバッグ線
+            //outline: "1px dashed rgba(0,255,0,.35)" // デバッグ線
         });
         document.body.appendChild(s);
         zoneSvgs.push({ svg: s, rect: z, busy: false });
