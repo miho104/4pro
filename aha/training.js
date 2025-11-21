@@ -273,6 +273,7 @@ let corrects = 0;
 let misses = 0;
 
 let difficulty=null;
+let config = {};
 let player;
 let playerReady = false;
 
@@ -320,7 +321,7 @@ function highlightSelection(dir) {
     zoneSvgs.forEach(z => {
         const center = zoneCenter(z.rect);
         if (mainDirectionFromPoint(center) === dir) {
-            z.svg.style.backgroundColor = "rgba(255, 255, 0, 0.2)"; // 半透明の黄色
+            z.svg.style.backgroundColor = "rgba(255, 255, 0, 0.2)";
         }
     });
 }
@@ -593,7 +594,6 @@ function startAhaRound() {
     ahaActive = true;
     makeBoard();
 
-    // 1. ゾーンを4つの領域に分類
     const categorizedZones = { up: [], down: [], left: [], right: [] };
     for (const z of zoneSvgs) {
         const dir = mainDirectionFromPoint(zoneCenter(z.rect));
@@ -602,13 +602,11 @@ function startAhaRound() {
         }
     }
 
-    // 各カテゴリ内のゾーンをシャッフル
     for (const dir in categorizedZones) {
         categorizedZones[dir].sort(() => 0.5 - Math.random());
     }
 
-    // 2. 各領域から描画するゾーンを選択
-    const totalShapes = Math.min(zoneSvgs.length, config.shapeCount);
+    const totalShapes = Math.min(zoneSvgs.length, config.maxShapes);
     const shapesPerCategory = Math.floor(totalShapes / 4);
     let remainder = totalShapes % 4;
     const dirs = ["up", "down", "left", "right"];
@@ -624,7 +622,6 @@ function startAhaRound() {
         zonesToFill.push(...selected);
     }
 
-    // 3. 図形を描画
     zonesToFill.forEach(z => {
         const type = randItem(SHAPES);
         const color = randItem(COLORS);
