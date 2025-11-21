@@ -167,10 +167,12 @@ function isLookingCenter(landmarks) {
     const dYaw = pose.yaw - basePose.yaw;
     const dPitch = pose.pitch - basePose.pitch;
 
+    const verticalSensitivity = 2.0; // 縦方向の感度係数
+
     const diffLx = (left.x - baseLeft.x) - dYaw * yawScale;
-    const diffLy = (left.y - baseLeft.y) - dPitch * pitchScale;
+    const diffLy = ((left.y - baseLeft.y) - dPitch * pitchScale) * verticalSensitivity;
     const diffRx = (right.x - baseRight.x) - dYaw * yawScale;
-    const diffRy = (right.y - baseRight.y) - dPitch * pitchScale;
+    const diffRy = ((right.y - baseRight.y) - dPitch * pitchScale) * verticalSensitivity;
 
     const distL = Math.sqrt(diffLx * diffLx + diffLy * diffLy);
     const distR = Math.sqrt(diffRx * diffRx + diffRy * diffRy);
@@ -590,16 +592,44 @@ function startColorMorph(zoneIndex) {
 function startAhaRound() {
     ahaActive = true;
     makeBoard();
-    const shuffledZones = [...zoneSvgs].sort(() => 0.5 - Math.random());
-    const maxShapes = Math.min(zoneSvgs.length, config.maxShapes);
-    const zonesToFill = shuffledZones.slice(0, Math.min(maxShapes, shuffledZones.length));
 
+    // 1. ゾーンを4つの領域に分類
+    const categorizedZones = { up: [], down: [], left: [], right: [] };
+    for (const z of zoneSvgs) {
+        const dir = mainDirectionFromPoint(zoneCenter(z.rect));
+        if (categorizedZones[dir]) {
+            categorizedZones[dir].push(z);
+        }
+    }
+
+    // 各カテゴリ内のゾーンをシャッフル
+    for (const dir in categorizedZones) {
+        categorizedZones[dir].sort(() => 0.5 - Math.random());
+    }
+
+    // 2. 各領域から描画するゾーンを選択
+    const totalShapes = Math.min(zoneSvgs.length, config.shapeCount);
+    const shapesPerCategory = Math.floor(totalShapes / 4);
+    let remainder = totalShapes % 4;
+    const dirs = ["up", "down", "left", "right"];
+    const zonesToFill = [];
+
+    for (const dir of dirs) {
+        let count = shapesPerCategory;
+        if (remainder > 0) {
+            count++;
+            remainder--;
+        }
+        const selected = categorizedZones[dir].slice(0, count);
+        zonesToFill.push(...selected);
+    }
+
+    // 3. 図形を描画
     zonesToFill.forEach(z => {
         const type = randItem(SHAPES);
         const color = randItem(COLORS);
         const size = randItem(SIZES);
 
-        // ゾーンの中心に配置
         const x = z.rect.w / 2;
         const y = z.rect.h / 2;
 
@@ -617,9 +647,10 @@ function startAhaRound() {
     let zoneIndex = -1;
 
     if (mode === "popin") {
-        const availableZones = zoneSvgs.map((z, i) => z.busy ? -1 : i).filter(i => i !== -1);
+        const availableZones = zoneSvgs.filter(z => !z.busy);
         if (availableZones.length > 0) {
-            zoneIndex = randItem(availableZones);
+            const targetZone = randItem(availableZones);
+            zoneIndex = zoneSvgs.indexOf(targetZone);
         } else {
             console.log("No available zones for pop-in, switching to color morph.");
             mode = "colormorph";
@@ -627,20 +658,15 @@ function startAhaRound() {
     }
 
     if (mode === "colormorph") {
-        const busyZones = zoneSvgs.map((z, i) => z.busy ? i : -1).filter(i => i !== -1);
+        const busyZones = zoneSvgs.filter(z => z.busy);
         if (busyZones.length > 0) {
-            zoneIndex = randItem(busyZones);
+            const targetZone = randItem(busyZones);
+            zoneIndex = zoneSvgs.indexOf(targetZone);
         } else {
-            console.log("No busy zones for color morph, switching to pop-in.");
-            mode = "popin";
-            const availableZones = zoneSvgs.map((z, i) => z.busy ? -1 : i).filter(i => i !== -1);
-            if(availableZones.length > 0) {
-                zoneIndex = randItem(availableZones);
-            } else {
-                console.warn("No zones available for pop-in either. Skipping round.");
-                setTimeout(nextAhaStep, 100);
-                return;
-            }
+            // colormorphもpopinもできない場合
+            console.warn("No zones available for any mode. Skipping round.");
+            setTimeout(nextAhaStep, 100);
+            return;
         }
     }
     
@@ -658,11 +684,19 @@ function startAhaRound() {
         ahaTargetElement = spawnPopIn(zoneIndex, type);
         if (ahaTargetElement) {
             zoneSvgs[zoneIndex].busy = true;
+        } else {
+            console.warn(`Pop-in failed for zone ${zoneIndex}. Skipping round.`);
+            setTimeout(nextAhaStep, 100);
+            return;
         }
     } else {
         morphCtrl = startColorMorph(zoneIndex);
         if (morphCtrl) {
             ahaTargetElement = morphCtrl.group;
+        } else {
+            console.warn(`Color morph failed for zone ${zoneIndex}. Skipping round.`);
+            setTimeout(nextAhaStep, 100);
+            return;
         }
     }
 
