@@ -482,7 +482,8 @@ function startMiniGame() {
     rounds = 0;
     document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
     if (!targetShape) targetShape = randItem(SHAPES);
-    runRound();
+    
+    setTimeout(() => runRound(), 1200);
 }
 
 function runRound() {

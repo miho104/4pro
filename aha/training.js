@@ -167,7 +167,7 @@ function isLookingCenter(landmarks) {
     const dYaw = pose.yaw - basePose.yaw;
     const dPitch = pose.pitch - basePose.pitch;
 
-    const verticalSensitivity = 2.0; // 縦方向の感度係数
+    const verticalSensitivity = 5.0;
 
     const diffLx = (left.x - baseLeft.x) - dYaw * yawScale;
     const diffLy = ((left.y - baseLeft.y) - dPitch * pitchScale) * verticalSensitivity;
@@ -592,6 +592,7 @@ function startColorMorph(zoneIndex) {
 
 function startAhaRound() {
     ahaActive = true;
+    gazePenaltyRaw = 0;
     makeBoard();
 
     const categorizedZones = { up: [], down: [], left: [], right: [] };
@@ -736,7 +737,6 @@ function onAhaKeyDown(ev) {
         } else {
             misses++;
             score += Math.max(0, -penalty);
-            All_Penalty += penalty;
             smallShake();
             setTimeout(() => {
                 highlightElement(ahaTargetElement, true);
