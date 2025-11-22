@@ -261,8 +261,8 @@ const MIN_SHAPE_SIZE = 80;
 
 const AVOID_PAD = 16;
 const CELL_INSET = 10;
-const MIN_CELL_WH = 44;
-const TARGET_TOTAL_CELLS = 12;
+const MIN_CELL_WH = 30;
+const TARGET_TOTAL_CELLS = 16;
 
 let score = 0;
 let targetShape = null;
@@ -274,8 +274,8 @@ let remainingTarget = 0;
 let currentRoundStartMs = 0;
 let currentRoundTargetSizes = [];
 
-let duration = 0;
 let gameActive = false;
+let gameCount = 0;
 let rounds = 0;
 let timerId = null;
 let startTime = null;
@@ -440,7 +440,8 @@ function showConfirmUI() {
         };
         if (playerReady) {
             startPlayback();
-        } else {
+        }
+        else {
             const checkInterval = setInterval(() => {
                 if (playerReady) {
                     clearInterval(checkInterval);
@@ -454,6 +455,29 @@ function showConfirmUI() {
 function startMiniGame() {
     pauseTimer();
     if (gameActive) return;
+
+    gameCount++;
+
+    if (gameCount > 1) {
+        const r = iframe.getBoundingClientRect();
+        const ov = document.createElement("div");
+        Object.assign(ov.style, {
+            position: "absolute", left: `${r.x}px`, top: `${r.y}px`,
+            width: `${r.width}px`, height: `${r.height}px`,
+            display: "grid", placeItems: "center", zIndex: 1800, pointerEvents: "none",
+        });
+        const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const px = Math.min(r.width, r.height) * 0.28;
+        s.setAttribute("viewBox", `0 0 ${px} ${px}`);
+        s.setAttribute("width", px); s.setAttribute("height", px);
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        drawShape(g, targetShape, px / 2, px / 2, px * 0.9, "#10d1cf");
+        s.appendChild(g);
+        ov.appendChild(s);
+        document.body.appendChild(ov);
+        setTimeout(() => ov.remove(), 1000);
+    }
+
     gameActive = true;
     rounds = 0;
     document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
@@ -592,7 +616,7 @@ function rebuildZoneSvgs(zones) {
             width: `${z.w}px`, height: `${z.h}px`,
             zIndex: '1001',
             pointerEvents: 'none',
-            //outline: "1px dashed rgba(0,255,0,.35)"//デバック用
+            outline: "1px dashed rgba(0,255,0,.35)"//デバック用
         });
         document.body.appendChild(s);
         zoneSvgs.push({ svg: s, rect: z, busy: false });
@@ -670,8 +694,8 @@ function buildZonesByGuides() {
     const v = getVideoRect();
     const c = getControlsRect();
 
-    const xs = new Set([0, W]);
-    const ys = new Set([0, H]);
+    const xs = new Set([0, W, W / 2]);
+    const ys = new Set([0, H, H / 2]);
 
     [v].forEach(r => {
         xs.add(Math.max(0, Math.round(r.x - AVOID_PAD)));
