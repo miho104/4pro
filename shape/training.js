@@ -309,10 +309,12 @@ function unMuteVideo() { if (playerReady) {
 //タイマー
 function startTimer() {
     if (running) return;
+    if (pausedAt === 0) {
+        nextIntervalTime = intervalSeconds;
+    }
     startTime = performance.now() - pausedAt;
     running = true;
     timerId = requestAnimationFrame(tick);
-    nextIntervalTime = intervalSeconds; // 最初の目標時間
 }
 
 function pauseTimer() {
@@ -502,7 +504,7 @@ function endMiniGame() {
     clearBoard();
     document.getElementById('hourglass-container').style.display = 'block';
     gameActive = false;
-    pausedAt = 0;
+    // pausedAt = 0;
     startTimer();
     console.log("ミニゲーム終了");
 }
@@ -627,10 +629,10 @@ function rebuildZoneSvgs(zones) {
 function spawnInZone(zoneIndex, type, color, size) {
     const z = zoneSvgs[zoneIndex];
     if (!z || z.busy) return false;
-    const pad = size / 2 + 6;
+    const pad = size / 2 + 10;
     if (z.rect.w < 2 * pad || z.rect.h < 2 * pad) return false;
     const x = randInt(pad, z.rect.w - pad);
-    const y = randInt(pad, z.rect.h - pad);
+    const y = z.rect.h / 2;
     const g = svg("g", { class: "shape" });
     g.dataset.type = type;
     g.setAttribute("transform", `rotate(${randInt(0, 359)}, ${x}, ${y})`);

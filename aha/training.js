@@ -342,18 +342,18 @@ function unMuteVideo() { if (playerReady) {
 //タイマー
 function startTimer() {
     if (running) return;
-    startTime = performance.now() - pausedAt;//再開時はpauseした位置から
+    if (pausedAt === 0) {
+        nextIntervalTime = intervalSeconds;
+    }
+    startTime = performance.now() - pausedAt;
     running = true;
     timerId = requestAnimationFrame(tick);
-    nextIntervalTime = intervalSeconds;//目標時間
-    console.log("timer start"+nextIntervalTime)//デバック用
 }
 
 function pauseTimer() {
     if (!running) return;
     pausedAt = performance.now() - startTime;
     running = false;
-    console.log("timer stop")//デバック用
     cancelAnimationFrame(timerId);
 }
 
@@ -397,6 +397,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 // 難易度 UI
 function showDifficultyUI() {
+    camera.start();
     if (!startArea) return;
     const wrap = document.createElement("div");
     wrap.id = "diff-wrap";
@@ -438,7 +439,6 @@ function showConfirmUI() {
 
         const startPlayback = () => {
             Object.assign(iframe.style, { pointerEvents: "none" });
-            camera.start();
             playVideo();
             unMuteVideo();
             startMiniGame();
