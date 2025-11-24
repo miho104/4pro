@@ -38,7 +38,6 @@ let calibrated = false;
 let baseLeft = null, baseRight = null, basePose = null;
 let yawScale = 0.2, pitchScale = 0.2;
 let gazeHistory = [];
-let blinkCooldown = 0;
 let frameCounter = 0;
 
 const FACE_OUTLINE_IDX = [1, 6, 10, 67, 151, 168, 197, 297];
@@ -195,15 +194,8 @@ faceMesh.onResults((results) => {
         const leftClosed = isEyeClosed(landmarks, true);
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
-            console.log("まばたき検出");
-            blinkCooldown = 6; //クールダウン
+            //console.log("まばたき検出中 - 視線判定スキップ");
             return;
-        }
-
-        if (blinkCooldown > 0) {
-            blinkCooldown--;
-            return;
-        }
 
         const isMoving = detectFaceOutlineMovement(landmarks);
         if (isMoving) {
