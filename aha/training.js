@@ -4,7 +4,7 @@ const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";
 iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&playsinline=1`;
 
 //api導入
-window.onYouTubeIframeAPIReady = function() {
+window.onYouTubeIframeAPIReady = function () {
     console.log("[API Ready] onYouTubeIframeAPIReady called");
     player = new YT.Player('video-frame', {
         videoId: videoId,
@@ -18,7 +18,7 @@ window.onYouTubeIframeAPIReady = function() {
             onReady: () => {
                 console.log("Player ready");
                 player.mute();
-                playerReady=true;
+                playerReady = true;
             }
         },
         onError: (e) => {
@@ -82,7 +82,7 @@ function isEyeClosed(landmarks, isLeft = true) {
 function detectFaceOutlineMovement(landmarks) {
     const outline = FACE_OUTLINE_IDX.map(i => landmarks[i]);
     if (!prevOutline) {
-        prevOutline = outline.map(p => ({...p}));
+        prevOutline = outline.map(p => ({ ...p }));
         return false;
     }
 
@@ -91,10 +91,10 @@ function detectFaceOutlineMovement(landmarks) {
         const dx = outline[i].x - prevOutline[i].x;
         const dy = outline[i].y - prevOutline[i].y;
         const dz = outline[i].z - prevOutline[i].z;
-        totalDist += Math.sqrt(dx*dx + dy*dy + dz*dz);
+        totalDist += Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
     const avgDist = totalDist / outline.length;
-    prevOutline = outline.map(p => ({...p}));
+    prevOutline = outline.map(p => ({ ...p }));
     //console.log(avgDist);
     return avgDist > 0.015; // 姿勢変化のしきい値 もっと大きくてもいい
 }
@@ -132,7 +132,7 @@ function getHeadPose(landmarks) {
     return { roll, pitch, yaw };
 }
 
-function smooth(value){
+function smooth(value) {
     gazeHistory.push(value);
     if (gazeHistory.length > 5) gazeHistory.shift();
     return gazeHistory.reduce((a, b) => a + b, 0) / gazeHistory.length;
@@ -159,7 +159,7 @@ function isLookingCenter(landmarks) {
     const right = getNormalizedEyePos(landmarks, false);
 
     if (!calibrated) {
-        return {smoothDiff: 0, diffL: 0, diffR: 0, dYaw: 0, dPitch: 0 };
+        return { smoothDiff: 0, diffL: 0, diffR: 0, dYaw: 0, dPitch: 0 };
     }
 
     const pose = getHeadPose(landmarks);
@@ -181,7 +181,7 @@ function isLookingCenter(landmarks) {
     //const THRESHOLD_OK = 0.08;
     //const THRESHOLD_WARN = 0.12;
 
-    return {smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch };
+    return { smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch };
 }
 
 const faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
@@ -196,6 +196,7 @@ faceMesh.onResults((results) => {
         if (leftClosed && rightClosed) {
             //console.log("まばたき検出中 - 視線判定スキップ");
             return;
+        }
 
         const isMoving = detectFaceOutlineMovement(landmarks);
         if (isMoving) {
@@ -252,7 +253,7 @@ const camera = new Camera(video, {
 // =================== ゲーム本体 ===================
 const SHAPES = ["circle", "triangle", "square", "star", "pentagon"];
 const COLORS = ["#f87171", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#f472b6"];
-const SIZES  = [60, 80, 100];
+const SIZES = [60, 80, 100];
 
 const AVOID_PAD = 16;
 const CELL_INSET = 10;
@@ -264,7 +265,7 @@ let All_Penalty = 0;
 let corrects = 0;
 let misses = 0;
 
-let difficulty=null;
+let difficulty = null;
 let config = {};
 let player;
 let playerReady = false;
@@ -279,7 +280,7 @@ let duration = 0;
 let ahaTargetElement = null;
 
 let rounds = 0;
-let maxShapes =7;
+let maxShapes = 7;
 let startTime = null;
 let pausedAt = 0;
 let running = null;
@@ -293,7 +294,7 @@ let ahaKeydownBound = null;//ハンドラ退避
 let preselectedDir = null;//2段階選択用の方向
 
 const AHA = {
-    morphMs:5000,// 色変化にかける時間
+    morphMs: 5000,// 色変化にかける時間
     popinMs: 7000,// 新規出現のフェード時間
     afterAnswerFreezeMs: 1500,// 回答演出時間
     roundCount: 3,// 1ミニゲーム内のラウンド数
@@ -319,17 +320,21 @@ function highlightSelection(dir) {
 }
 
 //apiコマンド
-function playVideo() { if (playerReady) {
-    player.playVideo();
-} else {
-    console.warn('player not ready yet');
-}}
+function playVideo() {
+    if (playerReady) {
+        player.playVideo();
+    } else {
+        console.warn('player not ready yet');
+    }
+}
 function pauseVideo() { player.pauseVideo(); }
-function unMuteVideo() { if (playerReady) {
-    player.unMute();
-} else {
-    console.warn('player not ready yet');
-} }
+function unMuteVideo() {
+    if (playerReady) {
+        player.unMute();
+    } else {
+        console.warn('player not ready yet');
+    }
+}
 
 //タイマー
 function startTimer() {
@@ -376,9 +381,9 @@ window.addEventListener("DOMContentLoaded", () => {
     setBtn.addEventListener("click", () => {
         console.log("btnConfirm");
         const minutes = parseFloat(durationInput.value);
-                    if (!isNaN(minutes) && minutes > 0) {
-                        intervalSeconds = minutes * 60;
-                        console.log("ミニゲーム間隔:", intervalSeconds, "秒");            startArea.innerHTML = "";
+        if (!isNaN(minutes) && minutes > 0) {
+            intervalSeconds = minutes * 60;
+            console.log("ミニゲーム間隔:", intervalSeconds, "秒"); startArea.innerHTML = "";
 
             showDifficultyUI();
         } else {
@@ -659,7 +664,7 @@ function startAhaRound() {
             return;
         }
     }
-    
+
     if (zoneIndex === -1) {
         console.error("Could not determine a valid zone for the round. Ending game.");
         endAhaGame();
@@ -761,10 +766,10 @@ function highlightElement(el, shouldScale = false) {
         const angle = rotateMatch ? rotateMatch[1] : 0;
         const cx = rotateMatch ? rotateMatch[2] : 0;
         const cy = rotateMatch ? rotateMatch[3] : 0;
-        
+
         const scale = 1.2;
         const newTransform = `translate(${cx}, ${cy}) scale(${scale}) translate(${-cx}, ${-cy}) ${originalTransform}`;
-        
+
         el.setAttribute("transform", newTransform);
         el.style.transition = "transform 0.2s ease-out";
 
@@ -791,7 +796,7 @@ function smallShake() {
             { transform: "translate(15px,0)" },
             { transform: "translate(0,0)" },
         ],
-        { duration: 120, iterations:3 }
+        { duration: 120, iterations: 3 }
     );
 }
 
@@ -989,8 +994,8 @@ function buildZonesByGuides() {
     }
 
     return finalCells
-    .filter(c => c.w >= 80 && c.h >= 80)
-    .slice(0, TARGET_TOTAL_CELLS);
+        .filter(c => c.w >= 80 && c.h >= 80)
+        .slice(0, TARGET_TOTAL_CELLS);
 }
 
 function cutOutCellByObstacle(cell, obstacle) {
