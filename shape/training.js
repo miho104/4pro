@@ -189,6 +189,10 @@ faceMesh.onResults((results) => {
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
 
+        if (gameActive) {
+            totalGameFrames++;
+        }
+
         const leftClosed = isEyeClosed(landmarks, true);
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
@@ -234,6 +238,9 @@ faceMesh.onResults((results) => {
         gazePenaltyRaw += smoothDiff;
 
         const THRESHOLD_WARN = 0.12;
+        if (gameActive && smoothDiff > THRESHOLD_WARN) {
+            deviatedFrames++;
+        }
         const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
         const saturation = 95 * deviationRatio;
         const lightness = 26 * deviationRatio;
@@ -270,6 +277,12 @@ let hits = 0;
 let misses = 0;
 let remainingTarget = 0;
 
+// データ記録用変数
+let gameLog = [];
+let roundData = {};
+let clickLog = [];
+let deviatedFrames = 0;
+let totalGameFrames = 0;
 
 let currentRoundStartMs = 0;
 let currentRoundTargetSizes = [];
@@ -364,9 +377,9 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 // 難易度 UI
-//start
 function showDifficultyUI() {
     if (!startArea) return;
+    camera.start();
     const wrap = document.createElement("div");
     wrap.id = "diff-wrap";
     wrap.style.display = "flex";
@@ -430,7 +443,6 @@ function showConfirmUI() {
     document.body.appendChild(ov);
 
     btnConfirm.addEventListener('click', () => {
-        camera.start();
         const startPlayback = () => {
             Object.assign(iframe.style, { pointerEvents: "none" });
             playVideo();
@@ -494,6 +506,12 @@ function runRound() {
         return;
     }
     rounds++;
+
+    // データ収集の準備
+    roundData = { roundNumber: rounds };
+    clickLog = [];
+    gazePenaltyRaw = 0;
+
     currentRoundTargetSizes = [];
     currentRoundStartMs = performance.now();
     document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
@@ -536,14 +554,47 @@ document.getElementById("btn-recalib")?.addEventListener("click", () => {
 });
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
+    endGame();
+});
+
+function endGame() {
     const totalPicks = hits + misses;
+    const accuracy = totalPicks > 0 ? (hits / totalPicks * 100) : 0;
+    const deviationPercentage = totalGameFrames > 0 ? (deviatedFrames / totalGameFrames * 100) : 0;
+
+    const finalData = {
+        kind: "shape",
+        difficulty: difficulty,
+        targetShape: targetShape,
+        score: score,
+        totalHits: hits,
+        totalMisses: misses,
+        accuracy: accuracy.toFixed(1) + '%',
+        totalRounds: gameLog.length,
+        gazeDeviationPercentage: deviationPercentage.toFixed(2) + '%',
+        rounds: gameLog,
+    };
+
+    //JSONファイル
+    const jsonString = JSON.stringify(finalData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `shape_game_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
     alert([
         `終了！`,
-        `正解: ${hits} / ミス: ${misses}（正解率 ${(totalPicks ? (hits / totalPicks * 100) : 0).toFixed(1)}%）`,
-        `総合スコア: ${score.toLocaleString()}`
+        `正解: ${hits} / ミス: ${misses}（正解率 ${accuracy.toFixed(1)}%）`,
+        `総合スコア: ${score.toLocaleString()}`,
+        `データファイルが出力されました。`
     ].join('\n'));
     clearBoard();
-});
+}
 
 //図形＆ゾーン
 let zoneSvgs = [];
@@ -569,6 +620,8 @@ function getControlsRect() {
 }
 
 function drawShape(group, type, x, y, s, fill) {
+    group.dataset.type = type;
+    group.dataset.size = s;
     switch (type) {
         case "circle":
             group.appendChild(svg("circle", { cx: x, cy: y, r: s / 2, fill })); break;
@@ -634,7 +687,6 @@ function spawnInZone(zoneIndex, type, color, size) {
     const x = randInt(pad, z.rect.w - pad);
     const y = z.rect.h / 2;
     const g = svg("g", { class: "shape" });
-    g.dataset.type = type;
     g.setAttribute("transform", `rotate(${randInt(0, 359)}, ${x}, ${y})`);
     drawShape(g, type, x, y, size, color ?? randItem(COLORS));
     g.style.pointerEvents = 'auto';
@@ -645,8 +697,18 @@ function spawnInZone(zoneIndex, type, color, size) {
 }
 
 function onPick() {
-    const picked = this.dataset.type;
-    if (picked === targetShape) {
+    const isCorrect = this.dataset.type === targetShape;
+
+    // クリックログを記録
+    clickLog.push({
+        isCorrect: isCorrect,
+        shape: this.dataset.type,
+        size: this.dataset.size,
+        color: this.firstElementChild.getAttribute('fill'),
+        timestamp: performance.now() - currentRoundStartMs
+    });
+
+    if (isCorrect) {
         hits++;
         remainingTarget = Math.max(0, remainingTarget - 1);
         this.remove();
@@ -674,6 +736,13 @@ function onPick() {
 
             const roundScore = Math.max(0, baseScore + speedComponent - penalty - misspenalty);
             score += roundScore;
+
+            // ラウンドログを記録
+            roundData.clearTime = clearMs;
+            roundData.roundScore = roundScore;
+            roundData.gazePenalty = gazePenaltyRaw;
+            roundData.clicks = clickLog;
+            gameLog.push(roundData);
 
             console.log(" 速さ加点:"+speedComponent+" 視線減点:"+penalty);
             setTimeout(runRound, 400);
@@ -789,7 +858,7 @@ function makeBoard() {
     for (let i = shuffledOthers.length - 1; i > 0; i--) {
         const j = (Math.random() * (i + 1)) | 0;[shuffledOthers[i], shuffledOthers[j]] = [shuffledOthers[j], shuffledOthers[i]];
     }
-    const pickedOthers = shuffledOthers.slice(0, randInt(1, 3));
+    const pickedOthers = shuffledOthers.slice(0, randInt(2, 3));
 
     const types = [];
     types.push(...Array(Math.min(wantTarget, total)).fill(targetShape));
@@ -820,4 +889,8 @@ function makeBoard() {
             currentRoundTargetSizes.push(size); // スコア用
         }
     }
+
+    roundData.targetShape = targetShape;
+    roundData.totalShapes = types.length;
+    roundData.totalTargets = remainingTarget;
 }

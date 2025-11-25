@@ -199,6 +199,10 @@ faceMesh.onResults((results) => {
   if (!results.multiFaceLandmarks?.length) return;
   const landmarks = results.multiFaceLandmarks[0];
 
+  if (gameActive) {
+    totalGameFrames++;
+  }
+
   const leftClosed = isEyeClosed(landmarks, true);
   const rightClosed = isEyeClosed(landmarks, false);
   if (leftClosed && rightClosed) {
@@ -240,6 +244,9 @@ faceMesh.onResults((results) => {
   gazePenaltyRaw += smoothDiff;
 
   const THRESHOLD_WARN = 0.12;
+  if (gameActive && smoothDiff > THRESHOLD_WARN) {
+    deviatedFrames++;
+}
   const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
   const saturation = 95 * deviationRatio;
   const lightness = 26 * deviationRatio;
@@ -281,6 +288,12 @@ let config = { swapCount: 5, cupOrder: [0, 1, 2] };
 let score = 0;
 let corrects = 0;
 let misses = 0;
+
+// データ記録用変数
+let gameLog = [];
+let roundData = {};
+let deviatedFrames = 0;
+let totalGameFrames = 0;
 let player;
 let playerReady = false;
 let intervalSeconds = 0;
@@ -367,6 +380,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 //難易度UI
 function showDifficultyUI() {
+  camera.start();
   const rect = getVideoRect();
   if (!startArea) return;
   const wrap = document.createElement("div");
@@ -398,7 +412,6 @@ function showDifficultyUI() {
     
     const startPlayback = () => {
       Object.assign(iframe.style, { pointerEvents: "none" });
-      camera.start();
       playVideo();
       unMuteVideo();
       startTimer();
@@ -445,7 +458,7 @@ function endMiniGame() {
   clearBoard();
   document.getElementById('hourglass-container').style.display = 'block';
   gameActive = false;
-  pausedAt = 0;
+  //pausedAt = 0;
   startTimer();
   console.log("ミニゲーム終了");
 }
@@ -485,14 +498,48 @@ document.getElementById("btn-recalib")?.addEventListener("click", () => {
 });
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
-  const totalPicks = corrects + misses;
-  alert([
-    `終了！`,
-    `正解: ${corrects} / ミス: ${misses}（正解率 ${(totalPicks ? (corrects / totalPicks * 100) : 0).toFixed(1)}%）`,
-    `総合スコア: ${score.toLocaleString()}`
-  ].join('\n'));
-  clearBoard();
+  endGame();
 });
+
+function endGame() {
+  //最終データ集計
+  const totalPicks = corrects + misses;
+  const accuracy = totalPicks > 0 ? (corrects / totalPicks * 100) : 0;
+  const deviationPercentage = totalGameFrames > 0 ? (deviatedFrames / totalGameFrames * 100) : 0;
+
+  const finalData = {
+      kind: "shuffle",
+      difficulty: difficulty,
+      score: score,
+      corrects: corrects,
+      misses: misses,
+      accuracy: accuracy.toFixed(1) + '%',
+      totalRounds: gameLog.length,
+      gazeDeviationPercentage: deviationPercentage.toFixed(2) + '%',
+      rounds: gameLog,
+  };
+
+  //JSONファイル
+  const jsonString = JSON.stringify(finalData, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `game_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  alert([
+      `終了！`,
+      `正解: ${corrects} / ミス: ${misses}（正解率 ${accuracy.toFixed(1)}%）`,
+      `総合スコア: ${score.toLocaleString()}`,
+      `データファイルが出力されました。`
+  ].join('\n'));
+  setTimeout(clearBoard, 500);
+
+};
 
 function getVideoRect() {
   const rect = iframe.getBoundingClientRect();
@@ -527,6 +574,7 @@ function gamestart() {
   clearBoard();
   cups = createCups(config.cupCount);
   gazePenaltyRaw = 0;
+  roundData = {};
   ballIndex = Math.floor(Math.random() * cups.length);
   cupOrder = Array.from({ length: config.cupOrder.length }, (_, i) => i);
 
@@ -583,7 +631,8 @@ function enableCupClick() {
       const baseScore = 3000;// 基本点
       const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.005) / 100) * 100; //gazePenaltyRawのmaxは約1.2 max7200ぐらい
 
-      if (i === ballIndex) {
+      const correct = i === ballIndex;
+      if (correct) {
         corrects++;
         roundScore = baseScore - penalty;
         cup.style.backgroundColor = "aquamarine";
@@ -593,6 +642,20 @@ function enableCupClick() {
         cups[ballIndex].style.backgroundColor = "aquamarine";
       }
       score += Math.max(0, roundScore);
+
+      const reactionTime = performance.now() - currentRoundStartMs;
+      roundData = {
+        roundNumber: rounds,
+        correct: correct,
+        reactionTime: reactionTime,
+        gazePenalty: gazePenaltyRaw,
+        cupCount: config.cupCount,
+        swapCount: config.swapCount,
+        correctCupIndex: ballIndex,
+        answeredCupIndex: i
+      };
+      gameLog.push(roundData);
+
       cups.forEach(c => c.style.pointerEvents = 'none');
 
       setTimeout(() => {

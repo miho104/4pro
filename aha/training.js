@@ -76,7 +76,7 @@ function isEyeClosed(landmarks, isLeft = true) {
     }
     const verticalDist = Math.abs(bottom.y - top.y);
     //console.log(verticalDist);
-    return verticalDist < 0.02;
+    return verticalDist < 0.025;
 }
 
 function detectFaceOutlineMovement(landmarks) {
@@ -191,6 +191,10 @@ faceMesh.onResults((results) => {
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
 
+        if (ahaActive) {
+            totalGameFrames++;
+        }
+
         const leftClosed = isEyeClosed(landmarks, true);
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
@@ -230,6 +234,10 @@ faceMesh.onResults((results) => {
         gazePenaltyRaw += smoothDiff;
 
         const THRESHOLD_WARN = 0.12;
+        if (ahaActive && smoothDiff > THRESHOLD_WARN) {
+            deviatedFrames++;
+        }
+
         let deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
         deviationRatio = deviationRatio ** 2;
         const saturation = 95 * deviationRatio;
@@ -264,6 +272,12 @@ let score = 0;
 let All_Penalty = 0;
 let corrects = 0;
 let misses = 0;
+
+let gameLog = [];
+let roundData = {};
+let changeTypeCounts = { popin: 0, colormorph: 0 };
+let deviatedFrames = 0;
+let totalGameFrames = 0;
 
 let difficulty = null;
 let config = {};
@@ -474,14 +488,7 @@ document.getElementById("btn-recalib")?.addEventListener("click", () => {
 });
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
-    const totalPicks = corrects + misses;
-    alert([
-        `終了！`,
-        `正解: ${corrects} / ミス: ${misses}（正解率 ${(totalPicks ? (corrects / totalPicks * 100) : 0).toFixed(1)}%）`,
-        `総合スコア: ${score.toLocaleString()}`,
-        `総ペナルティ: ${All_Penalty}`
-    ].join('\n'));
-    setTimeout(clearBoard, 500);
+    endGame();
 });
 
 //＝＝＝＝＝＝＝ゲーム内部＝＝＝＝＝＝＝＝＝
@@ -535,6 +542,10 @@ function spawnPopIn(zoneIndex, type) {
     if (!z) return null;
 
     const size = randItem(SIZES);
+    const color = randItem(COLORS);
+    roundData.size = size;
+    roundData.color = color;
+    roundData.shape = type;
 
     // ゾーンの中心に配置
     const x = z.rect.w / 2;
@@ -543,7 +554,7 @@ function spawnPopIn(zoneIndex, type) {
     const g = svg("g", { class: "shape" });
     g.dataset.type = type;
     g.setAttribute("transform", `rotate(${randInt(0, 359)}, ${x}, ${y})`);
-    drawShape(g, type, x, y, size, randItem(COLORS));
+    drawShape(g, type, x, y, size, color);
     g.style.opacity = "0";
     z.svg.appendChild(g);
     const t0 = performance.now();
@@ -570,6 +581,11 @@ function startColorMorph(zoneIndex) {
     let safety = 10;
     while (to.toLowerCase() === from.toLowerCase() && safety-- > 0) to = randItem(COLORS);
 
+    roundData.size = g.dataset.size;
+    roundData.shape = g.dataset.type;
+    roundData.color_from = from;
+    roundData.color_to = to;
+
     const t0 = performance.now();
     let killed = false;
     const step = () => {
@@ -590,6 +606,7 @@ function startColorMorph(zoneIndex) {
 function startAhaRound() {
     ahaActive = true;
     gazePenaltyRaw = 0;
+    roundData = {}; // ラウンドデータ初期化
     makeBoard();
 
     const categorizedZones = { up: [], down: [], left: [], right: [] };
@@ -638,6 +655,9 @@ function startAhaRound() {
     });
 
     let mode = AHA.chooseMode();
+    roundData.changeType = mode;
+    changeTypeCounts[mode]++;
+
     let morphCtrl = null;
     let zoneIndex = -1;
 
@@ -649,6 +669,8 @@ function startAhaRound() {
         } else {
             console.log("No available zones for pop-in, switching to color morph.");
             mode = "colormorph";
+            roundData.changeType = mode; // モード変更を記録
+            changeTypeCounts.popin--; changeTypeCounts.colormorph++; // カウント修正
         }
     }
 
@@ -667,12 +689,15 @@ function startAhaRound() {
 
     if (zoneIndex === -1) {
         console.error("Could not determine a valid zone for the round. Ending game.");
-        endAhaGame();
+        endMiniGame();
         return;
     }
 
     const center = zoneCenter(zoneSvgs[zoneIndex].rect);
+    const screen = screenCenter();
+    roundData.distanceFromCenter = Math.sqrt((center.x - screen.x) ** 2 + (center.y - screen.y) ** 2);
     ahaCorrectDir = mainDirectionFromPoint(center);
+    roundData.zoneDirection = ahaCorrectDir;
 
     if (mode === "popin") {
         const type = randItem(SHAPES);
@@ -725,6 +750,11 @@ function onAhaKeyDown(ev) {
         const speedComponent = Math.max(500, Math.round(10000 - clearMs));
         const penalty = Math.round((gazePenaltyRaw * 100) ** 2 * 0.05);
         const baseScore = 3000;//基本点
+
+        roundData.reactionTime = clearMs;
+        roundData.correct = correct;
+        roundData.gazePenalty = gazePenaltyRaw;
+        gameLog.push(roundData);
 
         if (correct) {
             corrects++;
@@ -811,7 +841,7 @@ function nextAhaStep() {
 
     if (ahaRounds >= config.rounds) {
         setTimeout(() => {
-            endAhaGame();
+            endMiniGame();
         }, delay);
     } else {
         // 次のラウンドへ
@@ -823,7 +853,7 @@ function nextAhaStep() {
     }
 }
 
-function endAhaGame() {
+function endMiniGame() {
     clearBoard();
     document.getElementById('hourglass-container').style.display = 'block'; //後で砂時計を表示
     pausedAt = 0;
@@ -847,6 +877,47 @@ function startMiniGame() {
     startAhaRound();
 }
 
+function endGame() {
+    //最終データ集計
+    const totalPicks = corrects + misses;
+    const accuracy = totalPicks > 0 ? (corrects / totalPicks * 100) : 0;
+    const deviationPercentage = totalGameFrames > 0 ? (deviatedFrames / totalGameFrames * 100) : 0;
+
+    const finalData = {
+        kind: "aha",
+        difficulty: difficulty,
+        score: score,
+        corrects: corrects,
+        misses: misses,
+        accuracy: accuracy.toFixed(1) + '%',
+        totalRounds: gameLog.length,
+        gazeDeviationPercentage: deviationPercentage.toFixed(2) + '%',
+        changeTypeCounts: changeTypeCounts,
+        rounds: gameLog,
+    };
+
+    //JSONファイル
+    const jsonString = JSON.stringify(finalData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `game_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    alert([
+        `終了！`,
+        `正解: ${corrects} / ミス: ${misses}（正解率 ${accuracy.toFixed(1)}%）`,
+        `総合スコア: ${score.toLocaleString()}`,
+        `データファイルが出力されました。`
+    ].join('\n'));
+    setTimeout(clearBoard, 500);
+
+};
+
 function clearBoard() {
     for (const z of zoneSvgs) {
         while (z.svg.firstChild) z.svg.firstChild.remove();
@@ -854,6 +925,7 @@ function clearBoard() {
 }
 
 function drawShape(group, type, x, y, s, fill) {
+    group.dataset.size = s;
     switch (type) {
         case "circle":
             group.appendChild(svg("circle", { cx: x, cy: y, r: s / 2, fill })); break;
