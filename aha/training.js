@@ -194,7 +194,7 @@ faceMesh.onResults((results) => {
         const leftClosed = isEyeClosed(landmarks, true);
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
-            //console.log("まばたき検出中 - 視線判定スキップ");
+            console.log("まばたき検出");
             return;
         }
 
