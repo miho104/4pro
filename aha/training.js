@@ -166,7 +166,7 @@ function isLookingCenter(landmarks) {
     const dYaw = pose.yaw - basePose.yaw;
     const dPitch = pose.pitch - basePose.pitch;
 
-    const verticalSensitivity = 4.0;
+    const verticalSensitivity = 2.0;
 
     const diffLx = (left.x - baseLeft.x) - dYaw * yawScale;
     const diffLy = ((left.y - baseLeft.y) - dPitch * pitchScale) * verticalSensitivity;
@@ -878,13 +878,17 @@ function startMiniGame() {
 }
 
 function endGame() {
-    //最終データ集計
     const totalPicks = corrects + misses;
     const accuracy = totalPicks > 0 ? (corrects / totalPicks * 100) : 0;
     const deviationPercentage = totalGameFrames > 0 ? (deviatedFrames / totalGameFrames * 100) : 0;
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
 
     const finalData = {
         kind: "aha",
+        month: month,
+        day: day,
         difficulty: difficulty,
         score: score,
         corrects: corrects,
