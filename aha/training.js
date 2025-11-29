@@ -250,7 +250,7 @@ faceMesh.onResults((results) => {
 
         gazePenaltyRaw += smoothDiff;
 
-        const THRESHOLD_WARN = 0.12;
+        const THRESHOLD_WARN = 0.009;
         if (ahaActive && smoothDiff > THRESHOLD_WARN) {
             deviatedFrames++;
         }
