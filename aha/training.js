@@ -166,22 +166,39 @@ function isLookingCenter(landmarks) {
     const dYaw = pose.yaw - basePose.yaw;
     const dPitch = pose.pitch - basePose.pitch;
 
-    const verticalSensitivity = 2.0;
+    let diffLx = (left.x - baseLeft.x) - dYaw * yawScale;
+    let diffLy = (left.y - baseLeft.y) - dPitch * pitchScale;
+    let diffRx = (right.x - baseRight.x) - dYaw * yawScale;
+    let diffRy = (right.y - baseRight.y) - dPitch * pitchScale;
 
-    const diffLx = (left.x - baseLeft.x) - dYaw * yawScale;
-    const diffLy = ((left.y - baseLeft.y) - dPitch * pitchScale) * verticalSensitivity;
-    const diffRx = (right.x - baseRight.x) - dYaw * yawScale;
-    const diffRy = ((right.y - baseRight.y) - dPitch * pitchScale) * verticalSensitivity;
+    const deadzone = 0.03;
+    const verticalExponent = 2.0;
+    const horizontalExponent = 1.5;
+
+    const applyResponseCurve = (value, exponent) => {
+        const absValue = Math.abs(value);
+        if (absValue < deadzone) {
+            return 0;
+        }
+        const effectiveValue = absValue - deadzone;
+        return Math.sign(value) * (effectiveValue ** exponent);
+    };
+    
+    diffLx = applyResponseCurve(diffLx, horizontalExponent);
+    diffLy = applyResponseCurve(diffLy, verticalExponent);
+    diffRx = applyResponseCurve(diffRx, horizontalExponent);
+    diffRy = applyResponseCurve(diffRy, verticalExponent);
+
+    const verticalSensitivity = 2.0;
+    diffLy *= verticalSensitivity;
+    diffRy *= verticalSensitivity;
 
     const distL = Math.sqrt(diffLx * diffLx + diffLy * diffLy);
     const distR = Math.sqrt(diffRx * diffRx + diffRy * diffRy);
     const diff = Math.max(distL, distR);
     const smoothDiff = smooth(diff);
 
-    //const THRESHOLD_OK = 0.08;
-    //const THRESHOLD_WARN = 0.12;
-
-    return { smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch };
+    return { smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch, rawDiffs: {lx: diffLx, ly: diffLy, rx: diffRx, ry: diffRy} };
 }
 
 const faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
@@ -312,7 +329,7 @@ const AHA = {
     popinMs: 7000,// 新規出現のフェード時間
     afterAnswerFreezeMs: 1500,// 回答演出時間
     roundCount: 3,// 1ミニゲーム内のラウンド数
-    chooseMode: () => (Math.random() < 0.5 ? "popin" : "colormorph"),
+    chooseMode: () => (Math.random() < 0.3 ? "popin" : "colormorph"),
 };
 
 function clearSelectionHighlights() {
