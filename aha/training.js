@@ -246,7 +246,7 @@ faceMesh.onResults((results) => {
         }
 
         const { smoothDiff } = isLookingCenter(landmarks);
-        //console.log(`[Gaze] state=${state} diff=${smoothDiff.toFixed(4)} L=${diffL.toFixed(4)} R=${diffR.toFixed(4)} dYaw=${(dYaw*57.3).toFixed(1)} dPitch=${(dPitch*57.3).toFixed(1)}`);
+        console.log(`smoothDiff: ${smoothDiff.toFixed(4)}`); // デバッグ用
 
         gazePenaltyRaw += smoothDiff;
 
@@ -259,7 +259,7 @@ faceMesh.onResults((results) => {
         deviationRatio = deviationRatio ** 2;
         const saturation = 95 * deviationRatio;
         const lightness = 26 * deviationRatio;
-        document.body.style.backgroundColor = `hsl(0, ${saturation}%, ${lightness}%)`;
+        document.body.style.backgroundColor = `hsl(0, ${saturation}%, ${lightness}%)`;//背景色
     }
 });
 
