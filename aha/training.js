@@ -316,19 +316,23 @@ let startTime = null;
 let pausedAt = 0;
 let running = null;
 
+let farZoneChangeCount = 0;
+const MIN_FAR_ZONE_CHANGES = 7;
+
+
 // ラウンド状態
 let ahaActive = false;
 let ahaRounds = 0;
 let ahaCorrectDir = null;// "up" | "down" | "left" | "right"
 let ahaCleanup = null;
-let ahaKeydownBound = null;//ハンドラ退避
-let preselectedDir = null;//2段階選択用の方向
+let ahaKeydownBound = null
+let preselectedDir = null;
 
 const AHA = {
     morphMs: 5000,// 色変化にかける時間
     popinMs: 7000,// 新規出現のフェード時間
     afterAnswerFreezeMs: 1500,// 回答演出時間
-    roundCount: 3,// 1ミニゲーム内のラウンド数
+    roundCount: 5,// 1ミニゲーム内のラウンド数
     chooseMode: () => (Math.random() < 0.3 ? "popin" : "colormorph"),
 };
 
@@ -407,19 +411,37 @@ window.addEventListener("DOMContentLoaded", () => {
     console.log("DOM Ready, set_btn =", document.getElementById("set_btn"));
 
     const setBtn = document.getElementById("set_btn");
-    const durationInput = document.getElementById("durationInput");
+    const totalDurationInput = document.getElementById("totalDurationInput");
 
     setBtn.addEventListener("click", () => {
         console.log("btnConfirm");
-        const minutes = parseFloat(durationInput.value);
-        if (!isNaN(minutes) && minutes > 0) {
-            intervalSeconds = minutes * 60;
-            console.log("ミニゲーム間隔:", intervalSeconds, "秒"); startArea.innerHTML = "";
+        const totalVideoMinutes = parseFloat(totalDurationInput.value);
 
-            showDifficultyUI();
-        } else {
-            alert("正しい数値を入力してください");
+        const NUM_MINI_GAMES = 4; //20ラウンド
+        const MINI_GAME_DURATION_MINUTES = 1;
+        const MIN_INTERVAL_MINUTES = 1;
+
+        const totalMiniGameTime = MINI_GAME_DURATION_MINUTES * NUM_MINI_GAMES;
+        const intervalCount = NUM_MINI_GAMES > 1 ? NUM_MINI_GAMES - 1 : 0;
+        
+        const minRequiredVideoTime = totalMiniGameTime + (MIN_INTERVAL_MINUTES * intervalCount);
+
+        if (isNaN(totalVideoMinutes) || totalVideoMinutes < minRequiredVideoTime) {
+            alert(`動画時間が短すぎます。`);
+            return;
         }
+        
+        const totalIntervalTime = totalVideoMinutes - totalMiniGameTime;
+        intervalSeconds = intervalCount > 0 ? (totalIntervalTime / intervalCount) * 60 : 0;
+
+        console.log(`動画全体: ${totalVideoMinutes}分 / ミニゲーム回数: ${NUM_MINI_GAMES}回（固定）`);
+        if (intervalCount > 0) {
+            console.log(`総インターバル時間: ${totalIntervalTime.toFixed(2)}分 / インターバル回数: ${intervalCount}回`);
+            console.log(`1回あたりのインターバル: ${intervalSeconds.toFixed(2)}秒`);
+        }
+        
+        startArea.innerHTML = "";
+        showDifficultyUI();
     });
 });
 
@@ -441,7 +463,7 @@ function showDifficultyUI() {
 
     function pick(level) {
         difficulty = level;
-        if (level === "easy") config = { rounds: 3, maxShapes: 7 };
+        if (level === "easy") config = { rounds: 5, maxShapes: 7 };
         if (level === "normal") config = { rounds: 5, maxShapes: 10 };
         if (level === "hard") config = { rounds: 5, maxShapes: 12 };
         wrap.remove();
@@ -462,7 +484,7 @@ function showConfirmUI() {
 
     btnConfirm.addEventListener('click', () => {
         console.log("clicked");
-        btnConfirm.remove(); // 先にボタンを削除
+        btnConfirm.remove();
         document.getElementById('target-overlay')?.remove();
 
         const startPlayback = () => {
@@ -620,25 +642,115 @@ function startColorMorph(zoneIndex) {
     };
 }
 
-function startAhaRound() {
-    ahaActive = true;
-    gazePenaltyRaw = 0;
-    roundData = {}; // ラウンドデータ初期化
-    makeBoard();
+function classifyZonesByDistance(allZones, videoRect) {
+    if (allZones.length === 0) {
+        return { farZones: [], nearZones: [] };
+    }
 
-    const categorizedZones = { up: [], down: [], left: [], right: [] };
-    for (const z of zoneSvgs) {
-        const dir = mainDirectionFromPoint(zoneCenter(z.rect));
-        if (categorizedZones[dir]) {
-            categorizedZones[dir].push(z);
+    const videoCenterX = videoRect.x + videoRect.w / 2;
+    const videoCenterY = videoRect.y + videoRect.h / 2;
+
+    //中心との距離計算
+    const zonesWithDistance = allZones.map(z => {
+        const center = zoneCenter(z.rect);
+        const distance = Math.sqrt((center.x - videoCenterX) ** 2 + (center.y - videoCenterY) ** 2);
+        return { zone: z, distance };
+    });
+
+    zonesWithDistance.sort((a, b) => a.distance - b.distance);
+
+    const medianIndex = Math.floor(zonesWithDistance.length / 2);
+    const medianDistance = zonesWithDistance[medianIndex].distance;
+
+    const farZones = [];
+    const nearZones = [];
+
+    zonesWithDistance.forEach(item => {
+        if (item.distance > medianDistance) {
+            farZones.push(item.zone);
+        } else {
+            nearZones.push(item.zone);
+        }
+    });
+
+    if (farZones.length < Math.floor(allZones.length / 3)) {
+        const farCount = Math.floor(allZones.length / 3);
+        const nearCount = allZones.length - farCount;
+        const allSortedZones = zonesWithDistance.map(item => item.zone);
+        return {
+            farZones: allSortedZones.slice(nearCount),
+            nearZones: allSortedZones.slice(0, nearCount)
         }
     }
 
+    return { farZones, nearZones };
+}
+
+function startAhaRound() {
+    ahaActive = true;
+    gazePenaltyRaw = 0;
+    roundData = {};
+    makeBoard();
+
+    if (zoneSvgs.length < 2) {
+        console.warn("ゾーンが2つ未満しか生成されませんでした。ラウンドをスキップします。");
+        setTimeout(nextAhaStep, 100);
+        return;
+    }
+
+    const videoRect = getVideoRect();
+    const { farZones } = classifyZonesByDistance(zoneSvgs, videoRect);
+
+    let mode = AHA.chooseMode();
+    if (config.maxShapes <= 1 && mode === 'popin') {
+        mode = 'colormorph';
+    }
+
+    roundData.changeType = mode;
+    changeTypeCounts[mode]++;
+
+    let targetZone;
+    const remainingRounds = 20 - ahaRounds;
+    const neededFarChanges = Math.max(0, MIN_FAR_ZONE_CHANGES - farZoneChangeCount);
+    const forceFarZone = remainingRounds <= neededFarChanges;
+
+    const potentialTargetZones = [...zoneSvgs];
+
+    if (forceFarZone) {
+        const farPotential = potentialTargetZones.filter(z => farZones.includes(z));
+        if (farPotential.length > 0) {
+            targetZone = randItem(farPotential);
+            console.log("強制的に遠いゾーンをターゲットに選択");
+        }
+    } else if (Math.random() < 0.35) {
+        const farPotential = potentialTargetZones.filter(z => farZones.includes(z));
+        if (farPotential.length > 0) {
+            targetZone = randItem(farPotential);
+            console.log("35%の確率で遠いゾーンをターゲットに選択");
+        }
+    }
+
+    if (!targetZone) {
+        targetZone = randItem(potentialTargetZones);
+        console.log("通常ターゲット選択");
+    }
+
+    let initialShapePlacementZones = [...zoneSvgs];
+    if (mode === "popin") {
+        initialShapePlacementZones = zoneSvgs.filter(z => z !== targetZone);
+    }
+
+    const totalShapes = Math.min(initialShapePlacementZones.length, config.maxShapes);
+
+    const categorizedZones = { up: [], down: [], left: [], right: [] };
+    for (const z of initialShapePlacementZones) {
+        const dir = mainDirectionFromPoint(zoneCenter(z.rect));
+        categorizedZones[dir].push(z);
+    }
     for (const dir in categorizedZones) {
         categorizedZones[dir].sort(() => 0.5 - Math.random());
     }
 
-    const totalShapes = Math.min(zoneSvgs.length, config.maxShapes);
     const shapesPerCategory = Math.floor(totalShapes / 4);
     let remainder = totalShapes % 4;
     const dirs = ["up", "down", "left", "right"];
@@ -646,24 +758,16 @@ function startAhaRound() {
 
     for (const dir of dirs) {
         let count = shapesPerCategory;
-        if (remainder > 0) {
-            count++;
-            remainder--;
-        }
-        const selected = categorizedZones[dir].slice(0, count);
-        zonesToFill.push(...selected);
+        if (remainder > 0) { count++; remainder--; }
+        zonesToFill.push(...categorizedZones[dir].slice(0, count));
     }
 
     zonesToFill.forEach(z => {
         const type = randItem(SHAPES);
         const color = randItem(COLORS);
         const size = randItem(SIZES);
-
-        const x = z.rect.w / 2;
-        const y = z.rect.h / 2;
-
+        const x = z.rect.w / 2; const y = z.rect.h / 2;
         const g = svg("g", { class: "shape" });
-
         g.dataset.type = type;
         g.setAttribute("transform", `rotate(${randInt(0, 359)}, ${x}, ${y})`);
         drawShape(g, type, x, y, size, color);
@@ -671,75 +775,49 @@ function startAhaRound() {
         z.busy = true;
     });
 
-    let mode = AHA.chooseMode();
-    roundData.changeType = mode;
-    changeTypeCounts[mode]++;
-
+    const isFar = farZones.includes(targetZone);
+    if (isFar) {
+        farZoneChangeCount++;
+        console.log(`遠いゾーンでの変化: ${farZoneChangeCount}回目`);
+    }
+    roundData.isFarZone = isFar;
+    
+    const zoneIndex = zoneSvgs.indexOf(targetZone);
     let morphCtrl = null;
-    let zoneIndex = -1;
 
-    if (mode === "popin") {
-        const availableZones = zoneSvgs.filter(z => !z.busy);
-        if (availableZones.length > 0) {
-            const targetZone = randItem(availableZones);
-            zoneIndex = zoneSvgs.indexOf(targetZone);
-        } else {
-            console.log("No available zones for pop-in, switching to color morph.");
-            mode = "colormorph";
-            roundData.changeType = mode; // モード変更を記録
-            changeTypeCounts.popin--; changeTypeCounts.colormorph++; // カウント修正
-        }
-    }
-
-    if (mode === "colormorph") {
-        const busyZones = zoneSvgs.filter(z => z.busy);
-        if (busyZones.length > 0) {
-            const targetZone = randItem(busyZones);
-            zoneIndex = zoneSvgs.indexOf(targetZone);
-        } else {
-            // colormorphもpopinもできない場合
-            console.warn("No zones available for any mode. Skipping round.");
-            setTimeout(nextAhaStep, 100);
-            return;
-        }
-    }
-
-    if (zoneIndex === -1) {
-        console.error("Could not determine a valid zone for the round. Ending game.");
-        endMiniGame();
-        return;
-    }
-
-    const center = zoneCenter(zoneSvgs[zoneIndex].rect);
+    const center = zoneCenter(targetZone.rect);
     const screen = screenCenter();
     roundData.distanceFromCenter = Math.sqrt((center.x - screen.x) ** 2 + (center.y - screen.y) ** 2);
     ahaCorrectDir = mainDirectionFromPoint(center);
     roundData.zoneDirection = ahaCorrectDir;
-
+    
     if (mode === "popin") {
+        if (targetZone.busy) {
+            console.error("Pop-inターゲットが予期せず埋まっています。ラウンドをスキップします。");
+            setTimeout(nextAhaStep, 100);
+            return;
+        }
         const type = randItem(SHAPES);
         ahaTargetElement = spawnPopIn(zoneIndex, type);
-        if (ahaTargetElement) {
-            zoneSvgs[zoneIndex].busy = true;
-        } else {
-            console.warn(`Pop-in failed for zone ${zoneIndex}. Skipping round.`);
+        if (ahaTargetElement) targetZone.busy = true;
+
+    } else { // colormorph
+        if (!targetZone.busy) {
+            console.error("Colormorphターゲットに図形がありません。ラウンドをスキップします。");
             setTimeout(nextAhaStep, 100);
             return;
         }
-    } else {
         morphCtrl = startColorMorph(zoneIndex);
-        if (morphCtrl) {
-            ahaTargetElement = morphCtrl.group;
-        } else {
-            console.warn(`Color morph failed for zone ${zoneIndex}. Skipping round.`);
-            setTimeout(nextAhaStep, 100);
-            return;
-        }
+        if (morphCtrl) ahaTargetElement = morphCtrl.group;
+    }
+    
+    if (!ahaTargetElement) {
+        console.warn(`変化の生成に失敗しました (mode: ${mode})。ラウンドをスキップします。`);
+        setTimeout(nextAhaStep, 100);
+        return;
     }
 
-    ahaCleanup = () => {
-        morphCtrl?.stop?.();
-    };
+    ahaCleanup = () => { morphCtrl?.stop?.(); };
 
     if (!ahaKeydownBound) {
         ahaKeydownBound = onAhaKeyDown;
@@ -855,6 +933,13 @@ function nextAhaStep() {
     ahaActive = false;
 
     const delay = AHA.afterAnswerFreezeMs + 200;
+
+    if (ahaRounds >= 20) {
+        setTimeout(() => {
+            endGame();
+        }, delay);
+        return;
+    }
 
     if (ahaRounds >= config.rounds) {
         setTimeout(() => {
@@ -1138,4 +1223,15 @@ function makeBoard() {
     const zones = buildZonesByGuides();
     if (!zones.length) return;
     rebuildZoneSvgs(zones);
+
+    //デバッグ用の可視化ロジック
+    const videoRect = getVideoRect();
+    const { farZones } = classifyZonesByDistance(zoneSvgs, videoRect);
+
+    for (const z of zoneSvgs) {
+        z.svg.style.outline = "";
+    }
+    for (const z of farZones) {
+        z.svg.style.outline = "2px solid rgba(255, 255, 0, 0.7)";
+    }
 }
