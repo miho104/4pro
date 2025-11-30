@@ -411,35 +411,31 @@ window.addEventListener("DOMContentLoaded", () => {
     console.log("DOM Ready, set_btn =", document.getElementById("set_btn"));
 
     const setBtn = document.getElementById("set_btn");
-    const totalDurationInput = document.getElementById("totalDurationInput");
+    const durationInput = document.getElementById("durationInput");
 
     setBtn.addEventListener("click", () => {
         console.log("btnConfirm");
-        const totalVideoMinutes = parseFloat(totalDurationInput.value);
-
-        const NUM_MINI_GAMES = 4; //20ラウンド
-        const MINI_GAME_DURATION_MINUTES = 1;
+        const totalVideoMinutes = parseFloat(durationInput.value);
+        
+        const MINI_GAME_DURATION_MINUTES = 1
         const MIN_INTERVAL_MINUTES = 1;
-
-        const totalMiniGameTime = MINI_GAME_DURATION_MINUTES * NUM_MINI_GAMES;
-        const intervalCount = NUM_MINI_GAMES > 1 ? NUM_MINI_GAMES - 1 : 0;
+        const totalMiniGameTime = MINI_GAME_DURATION_MINUTES * 4;
+        const intervalCount = 3;
         
         const minRequiredVideoTime = totalMiniGameTime + (MIN_INTERVAL_MINUTES * intervalCount);
 
         if (isNaN(totalVideoMinutes) || totalVideoMinutes < minRequiredVideoTime) {
-            alert(`動画時間が短すぎます。`);
+            alert(`動画時間が短すぎます。最低でも${minRequiredVideoTime}分以上の動画時間を指定してください。（ゲーム${totalMiniGameTime}分＋最低インターバル${intervalCount}分）`);
             return;
         }
         
         const totalIntervalTime = totalVideoMinutes - totalMiniGameTime;
-        intervalSeconds = intervalCount > 0 ? (totalIntervalTime / intervalCount) * 60 : 0;
+        intervalSeconds = (totalIntervalTime / intervalCount) * 60;
 
-        console.log(`動画全体: ${totalVideoMinutes}分 / ミニゲーム回数: ${NUM_MINI_GAMES}回（固定）`);
-        if (intervalCount > 0) {
-            console.log(`総インターバル時間: ${totalIntervalTime.toFixed(2)}分 / インターバル回数: ${intervalCount}回`);
-            console.log(`1回あたりのインターバル: ${intervalSeconds.toFixed(2)}秒`);
-        }
-        
+        console.log(`動画全体: ${totalVideoMinutes}分 / ミニゲーム回数: 4回（固定）`);
+        console.log(`総インターバル時間: ${totalIntervalTime.toFixed(2)}分 / インターバル回数: 3回`);
+        console.log(`1回あたりのインターバル: ${intervalSeconds.toFixed(2)}秒`);
+
         startArea.innerHTML = "";
         showDifficultyUI();
     });
