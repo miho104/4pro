@@ -329,7 +329,7 @@ let startTime = null;
 let pausedAt = 0;
 let running = false;
 let miniGameCount = 0;
-const NUM_MINI_GAMES = 4;
+const NUM_MINI_GAMES = 4; // ミニゲーム総回数
 
 const startArea = document.querySelector(".start");
 
@@ -495,6 +495,7 @@ function runRound() {
     return;
   }
   rounds++;
+  console.log(`ラウンド ${rounds} / ${config.rounds}`);
   currentRoundStartMs = performance.now();
   gamestart();
 }
@@ -510,15 +511,6 @@ function endMiniGame() {
     startTimer();
   }
   console.log("ミニゲーム終了");
-}
-
-function nextRound() {
-  rounds++;
-  if (rounds >= config.rounds) {
-    endMiniGame();
-  } else {
-    gamestart();
-  }
 }
 
 function clearBoard() {
@@ -710,7 +702,7 @@ function enableCupClick() {
 
       setTimeout(() => {
         cups.forEach(c => c.style.pointerEvents = 'auto');
-        nextRound();
+        runRound();
       }, 1500);
 
     }, { once: true });
