@@ -3,7 +3,7 @@ const params = new URLSearchParams(window.location.search);
 const videoId = params.get("v") || params.get("videoId") || "dQw4w9WgXcQ";
 iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&playsinline=1`;
 
-window.onYouTubeIframeAPIReady = function() {
+window.onYouTubeIframeAPIReady = function () {
     console.log("[API Ready] onYouTubeIframeAPIReady called");
     player = new YT.Player('video-frame', {
         videoId: videoId,
@@ -17,7 +17,7 @@ window.onYouTubeIframeAPIReady = function() {
             onReady: () => {
                 console.log("Player ready");
                 player.mute();
-                playerReady=true;
+                playerReady = true;
             }
         },
         onError: (e) => {
@@ -82,7 +82,7 @@ function isEyeClosed(landmarks, isLeft = true) {
 function detectFaceOutlineMovement(landmarks) {
     const outline = FACE_OUTLINE_IDX.map(i => landmarks[i]);
     if (!prevOutline) {
-        prevOutline = outline.map(p => ({...p}));
+        prevOutline = outline.map(p => ({ ...p }));
         return false;
     }
 
@@ -91,12 +91,12 @@ function detectFaceOutlineMovement(landmarks) {
         const dx = outline[i].x - prevOutline[i].x;
         const dy = outline[i].y - prevOutline[i].y;
         const dz = outline[i].z - prevOutline[i].z;
-        totalDist += Math.sqrt(dx*dx + dy*dy + dz*dz);
+        totalDist += Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
     const avgDist = totalDist / outline.length;
-    prevOutline = outline.map(p => ({...p}));
+    prevOutline = outline.map(p => ({ ...p }));
     //console.log(avgDist);
-    return avgDist > 0.01; // 姿勢変化のしきい値 もっと大きくてもいい
+    return avgDist > 0.015; // 姿勢変化のしきい値 もっと大きくてもいい
 }
 
 function getNormalizedEyePos(landmarks, isLeft = true) {
@@ -132,7 +132,7 @@ function getHeadPose(landmarks) {
     return { roll, pitch, yaw };
 }
 
-function smooth(value){
+function smooth(value) {
     gazeHistory.push(value);
     if (gazeHistory.length > 5) gazeHistory.shift();
     return gazeHistory.reduce((a, b) => a + b, 0) / gazeHistory.length;
@@ -159,27 +159,46 @@ function isLookingCenter(landmarks) {
     const right = getNormalizedEyePos(landmarks, false);
 
     if (!calibrated) {
-        return {smoothDiff: 0, diffL: 0, diffR: 0, dYaw: 0, dPitch: 0 };
+        return { smoothDiff: 0, diffL: 0, diffR: 0, dYaw: 0, dPitch: 0 };
     }
 
     const pose = getHeadPose(landmarks);
     const dYaw = pose.yaw - basePose.yaw;
     const dPitch = pose.pitch - basePose.pitch;
 
-    const diffLx = (left.x - baseLeft.x) - dYaw * yawScale;
-    const diffLy = (left.y - baseLeft.y) - dPitch * pitchScale;
-    const diffRx = (right.x - baseRight.x) - dYaw * yawScale;
-    const diffRy = (right.y - baseRight.y) - dPitch * pitchScale;
+    let diffLx = (left.x - baseLeft.x) - dYaw * yawScale;
+    let diffLy = (left.y - baseLeft.y) - dPitch * pitchScale;
+    let diffRx = (right.x - baseRight.x) - dYaw * yawScale;
+    let diffRy = (right.y - baseRight.y) - dPitch * pitchScale;
+
+    const deadzone = 0.03;
+    const verticalExponent = 2.0;
+    const horizontalExponent = 1.5;
+
+    const applyResponseCurve = (value, exponent) => {
+        const absValue = Math.abs(value);
+        if (absValue < deadzone) {
+            return 0;
+        }
+        const effectiveValue = absValue - deadzone;
+        return Math.sign(value) * (effectiveValue ** exponent);
+    };
+
+    diffLx = applyResponseCurve(diffLx, horizontalExponent);
+    diffLy = applyResponseCurve(diffLy, verticalExponent);
+    diffRx = applyResponseCurve(diffRx, horizontalExponent);
+    diffRy = applyResponseCurve(diffRy, verticalExponent);
+
+    const verticalSensitivity = 2.0;
+    diffLy *= verticalSensitivity;
+    diffRy *= verticalSensitivity;
 
     const distL = Math.sqrt(diffLx * diffLx + diffLy * diffLy);
     const distR = Math.sqrt(diffRx * diffRx + diffRy * diffRy);
     const diff = Math.max(distL, distR);
     const smoothDiff = smooth(diff);
 
-    //const THRESHOLD_OK = 0.08;
-    //const THRESHOLD_WARN = 0.12;
-
-    return {smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch };
+    return { smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch, rawDiffs: { lx: diffLx, ly: diffLy, rx: diffRx, ry: diffRy } };
 }
 
 const faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
@@ -197,12 +216,6 @@ faceMesh.onResults((results) => {
         const rightClosed = isEyeClosed(landmarks, false);
         if (leftClosed && rightClosed) {
             console.log("まばたき検出");
-            blinkCooldown =5; // クールダウン
-            return;
-        }
-
-        if (blinkCooldown > 0) {
-            blinkCooldown--;
             return;
         }
 
@@ -233,18 +246,20 @@ faceMesh.onResults((results) => {
         }
 
         const { smoothDiff } = isLookingCenter(landmarks);
-        //console.log(`[Gaze] state=${state} diff=${smoothDiff.toFixed(4)} L=${diffL.toFixed(4)} R=${diffR.toFixed(4)} dYaw=${(dYaw*57.3).toFixed(1)} dPitch=${(dPitch*57.3).toFixed(1)}`);
+        console.log(`smoothDiff: ${smoothDiff.toFixed(4)}`); // デバッグ用
 
         gazePenaltyRaw += smoothDiff;
 
-        const THRESHOLD_WARN = 0.12;
+        const THRESHOLD_WARN = 0.009;
         if (gameActive && smoothDiff > THRESHOLD_WARN) {
             deviatedFrames++;
         }
-        const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
+
+        let deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
+        deviationRatio = deviationRatio ** 2;
         const saturation = 95 * deviationRatio;
         const lightness = 26 * deviationRatio;
-        document.body.style.backgroundColor = `hsl(0, ${saturation}%, ${lightness}%)`;
+        document.body.style.backgroundColor = `hsl(0, ${saturation}%, ${lightness}%)`;//背景色
     }
 });
 
@@ -306,17 +321,21 @@ let player;
 let playerReady = false;
 
 
-function playVideo() { if (playerReady) {
-    player.playVideo();
-} else {
-    console.warn('player not ready yet');
-}}
+function playVideo() {
+    if (playerReady) {
+        player.playVideo();
+    } else {
+        console.warn('player not ready yet');
+    }
+}
 function pauseVideo() { player.pauseVideo(); }
-function unMuteVideo() { if (playerReady) {
-    player.unMute();
-} else {
-    console.warn('player not ready yet');
-} }
+function unMuteVideo() {
+    if (playerReady) {
+        player.unMute();
+    } else {
+        console.warn('player not ready yet');
+    }
+}
 
 
 //タイマー
@@ -344,7 +363,7 @@ function tick() {
     if (elapsed >= nextIntervalTime) {
         console.log("指定間隔到達:", nextIntervalTime, "秒");
         startMiniGame();
-        nextIntervalTime += intervalSeconds; // 次の目標時間を更新
+        nextIntervalTime += intervalSeconds;
     }
 
     if (elapsed < duration || duration === 0) {
@@ -359,20 +378,47 @@ window.addEventListener("DOMContentLoaded", () => {
     console.log("DOM Ready, set_btn =", document.getElementById("set_btn"));
 
     const setBtn = document.getElementById("set_btn");
-    const durationInput = document.getElementById("durationInput");
+    const totalDurationInput = document.getElementById("totalDurationInput");
+
+    if (!totalDurationInput) {
+        console.error("エラー: 'totalDurationInput' のIDを持つ要素が見つかりません。HTMLが正しいか確認してください。");
+        alert("エラー: 'totalDurationInput' のIDを持つ要素が見つかりません。");
+        return;
+    }
+    if (!setBtn) {
+        console.error("エラー: 'set_btn' のIDを持つ要素が見つかりません。");
+        alert("エラー: 'set_btn' のIDを持つ要素が見つかりません。");
+        return;
+    }
+    console.log("totalDurationInput:", totalDurationInput);
 
     setBtn.addEventListener("click", () => {
         console.log("btnConfirm");
-        const minutes = parseFloat(durationInput.value);
-        if (!isNaN(minutes) && minutes > 0) {
-            intervalSeconds = minutes * 60;
-            console.log("ミニゲーム間隔:", intervalSeconds, "秒");
-            startArea.innerHTML = "";
+        const totalVideoMinutes = parseFloat(totalDurationInput.value);
 
-            showDifficultyUI();
-        } else {
-            alert("正しい数値を入力してください");
+        const MINI_GAME_DURATION_MINUTES = 1;
+        const MIN_INTERVAL_MINUTES = 1;
+
+        const totalMiniGameTime = MINI_GAME_DURATION_MINUTES * 4;
+        const intervalCount = 3;
+
+        // 最低動画時間
+        const minRequiredVideoTime = totalMiniGameTime + (MIN_INTERVAL_MINUTES * intervalCount);
+
+        if (isNaN(totalVideoMinutes) || totalVideoMinutes < minRequiredVideoTime) {
+            alert(`動画時間が短すぎます。最低でも${minRequiredVideoTime}分以上の動画時間を指定してください。（ゲーム${totalMiniGameTime}分＋最低インターバル${intervalCount}分）`);
+            return;
         }
+
+        const totalIntervalTime = totalVideoMinutes - totalMiniGameTime;
+        intervalSeconds = (totalIntervalTime / intervalCount) * 60; // intervalCountは必ず3なので、0除算の心配なし
+
+        console.log(`動画全体: ${totalVideoMinutes}分 / ミニゲーム回数: 4回（固定）`);
+        console.log(`総インターバル時間: ${totalIntervalTime.toFixed(2)}分 / インターバル回数: 3回`);
+        console.log(`1回あたりのインターバル: ${intervalSeconds.toFixed(2)}秒`);
+
+        startArea.innerHTML = "";
+        showDifficultyUI();
     });
 });
 
@@ -394,9 +440,9 @@ function showDifficultyUI() {
 
     function pick(level) {
         difficulty = level;
-        if (level === "easy") config = { rounds: 3, targetRatio: 0.5 };
-        if (level === "normal") config = { rounds: 3, targetRatio: 0.4 };
-        if (level === "hard") config = { rounds: 3, targetRatio: 0.3 };
+        if (level === "easy") config = { rounds: 5, targetRatio: 0.5 };
+        if (level === "normal") config = { rounds: 5, targetRatio: 0.4 };
+        if (level === "hard") config = { rounds: 5, targetRatio: 0.3 };
         wrap.remove();
         showConfirmUI();
     }
@@ -447,7 +493,6 @@ function showConfirmUI() {
             Object.assign(iframe.style, { pointerEvents: "none" });
             playVideo();
             unMuteVideo();
-            startTimer();
             startMiniGame();
             btnConfirm.remove();
             document.getElementById('target-overlay')?.remove();
@@ -496,7 +541,7 @@ function startMiniGame() {
     rounds = 0;
     document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
     if (!targetShape) targetShape = randItem(SHAPES);
-    
+
     setTimeout(() => runRound(), 1200);
 }
 
@@ -507,7 +552,7 @@ function runRound() {
     }
     rounds++;
 
-    // データ収集の準備
+    // データ収集
     roundData = { roundNumber: rounds };
     clickLog = [];
     gazePenaltyRaw = 0;
@@ -561,9 +606,14 @@ function endGame() {
     const totalPicks = hits + misses;
     const accuracy = totalPicks > 0 ? (hits / totalPicks * 100) : 0;
     const deviationPercentage = totalGameFrames > 0 ? (deviatedFrames / totalGameFrames * 100) : 0;
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
 
     const finalData = {
         kind: "shape",
+        month: month,
+        day: day,
         difficulty: difficulty,
         targetShape: targetShape,
         score: score,
@@ -726,7 +776,7 @@ function onPick() {
             //const sizeComponent = Math.floor(Math.round(10000 * sizeFactor) / 100) * 100;
 
             //クリア速度加点
-            const speedComponent =Math.floor(Math.max(500, Math.round(12000 - clearMs))/ 100) * 100;//7秒以上かけたら最低保証
+            const speedComponent = Math.floor(Math.max(500, Math.round(12000 - clearMs)) / 100) * 100;//7秒以上かけたら最低保証
 
             // 視線ズレ減点
             const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.005) / 100) * 100;
@@ -744,7 +794,7 @@ function onPick() {
             roundData.clicks = clickLog;
             gameLog.push(roundData);
 
-            console.log(" 速さ加点:"+speedComponent+" 視線減点:"+penalty);
+            //console.log(" 速さ加点:"+speedComponent+" 視線減点:"+penalty);
             setTimeout(runRound, 400);
         }
     } else {//ミスアニメーション
@@ -835,62 +885,102 @@ function rectOverlap(a, b) {
     return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
-function makeBoard() {
-    for (const z of zoneSvgs) z.svg.remove();
-    zoneSvgs = [];
+function classifyZonesByDistance(allZones, videoRect) {
+    if (allZones.length === 0) {
+        return { farZones: [], nearZones: [] };
+    }
 
+    const videoCenterX = videoRect.x + videoRect.w / 2;
+    const videoCenterY = videoRect.y + videoRect.h / 2;
+
+    const zonesWithDistance = allZones.map(z => {
+        const center = { x: z.rect.x + z.rect.w / 2, y: z.rect.y + z.rect.h / 2 };
+        const distance = Math.sqrt(Math.pow(center.x - videoCenterX, 2) + Math.pow(center.y - videoCenterY, 2));
+        return { zone: z, distance };
+    });
+
+    zonesWithDistance.sort((a, b) => b.distance - a.distance);
+
+    const NUM_FAR_ZONES = 7;
+    const actualFarZoneCount = Math.min(NUM_FAR_ZONES, zonesWithDistance.length);
+
+    const farZones = zonesWithDistance.slice(0, actualFarZoneCount).map(item => item.zone);
+    const nearZones = zonesWithDistance.slice(actualFarZoneCount).map(item => item.zone);
+
+    return { farZones, nearZones };
+}
+
+function makeBoard() {
+    clearBoard();
     const zones = buildZonesByGuides();
     if (!zones.length) return;
     rebuildZoneSvgs(zones);
 
     remainingTarget = 0;
+    currentRoundTargetSizes = [];
 
-    // ゾーン順シャッフル
-    const order = [...zones.keys()];
-    for (let i = order.length - 1; i > 0; i--) {
-        const j = (Math.random() * (i + 1)) | 0;[order[i], order[j]] = [order[j], order[i]];
-    }
+    const videoRect = getVideoRect();
+    const { farZones, nearZones } = classifyZonesByDistance(zoneSvgs, videoRect);
 
-    const total = order.length;
-    const wantTarget = Math.max(2, Math.round(total * config.targetRatio));
+    const totalShapes = zoneSvgs.length;
+    const wantTarget = Math.max(2, Math.round(totalShapes * config.targetRatio));
     const others = SHAPES.filter(s => s !== targetShape);
-    const shuffledOthers = [...others];
-    for (let i = shuffledOthers.length - 1; i > 0; i--) {
-        const j = (Math.random() * (i + 1)) | 0;[shuffledOthers[i], shuffledOthers[j]] = [shuffledOthers[j], shuffledOthers[i]];
-    }
-    const pickedOthers = shuffledOthers.slice(0, randInt(2, 3));
+    const pickedOthers = [...others].sort(() => 0.5 - Math.random()).slice(0, randInt(2, 3));
 
-    const types = [];
-    types.push(...Array(Math.min(wantTarget, total)).fill(targetShape));
-    const remain = Math.max(0, total - types.length);
-    for (let i = 0; i < remain; i++) types.push(pickedOthers[i % pickedOthers.length]);
-    for (let i = types.length - 1; i > 0; i--) {
-        const j = (Math.random() * (i + 1)) | 0;[types[i], types[j]] = [types[j], types[i]];
-    }
+    const FAR_TARGET_RATIO = 0.25;// 遠いゾーン割り当て
+    let numTargetsInFarZones = Math.max(1, Math.floor(wantTarget * FAR_TARGET_RATIO));
+    numTargetsInFarZones = Math.min(numTargetsInFarZones, farZones.length, wantTarget);
+    let availableFarZones = [...farZones];
+    let placedTargetCount = 0;
 
-    const palette = [...COLORS];
-    for (let i = palette.length - 1; i > 0; i--) {
-        const j = (Math.random() * (i + 1)) | 0;[palette[i], palette[j]] = [palette[j], palette[i]];
-    }
-    let ci = 0; const nextColor = () => palette[(ci++) % palette.length];
+    for (let i = 0; i < numTargetsInFarZones; i++) {
+        if (availableFarZones.length === 0) break;
 
-    let zi = 0;
-    for (const t of types) {
-        let tries = 0;
-        while (tries < order.length && zoneSvgs[order[zi % order.length]].busy) { zi++; tries++; }
-        if (tries >= order.length) break;
-
+        const randomFarZone = randItem(availableFarZones);
+        const zoneIndex = zoneSvgs.indexOf(randomFarZone);
         const size = randItem(SIZES);
-        const placed = spawnInZone(order[zi % order.length], t, nextColor(), size);
-        zi++;
 
-        if (placed && t === targetShape) {
-            remainingTarget++;
-            currentRoundTargetSizes.push(size); // スコア用
+        const placed = spawnInZone(zoneIndex, targetShape, randItem(COLORS), size);
+        if (placed) {
+            placedTargetCount++;
+            currentRoundTargetSizes.push(size);
+            availableFarZones = availableFarZones.filter(z => z !== randomFarZone);
         }
     }
 
+    const remainingTargetsToPlace = wantTarget - placedTargetCount;
+    const types = [];
+    if (remainingTargetsToPlace > 0) {
+        types.push(...Array(remainingTargetsToPlace).fill(targetShape));
+    }
+    const remainingSlots = zoneSvgs.length - placedTargetCount;
+    const numOtherShapes = Math.max(0, remainingSlots - types.length);
+    for (let i = 0; i < numOtherShapes; i++) {
+        types.push(pickedOthers[i % pickedOthers.length]);
+    }
+    const shuffledTypes = types.sort(() => 0.5 - Math.random());
+
+    let availableZones = [...availableFarZones, ...nearZones];
+
+    for (const type of shuffledTypes) {
+        if (availableZones.length === 0) break;
+
+        const randomZone = randItem(availableZones);
+        const zoneIndex = zoneSvgs.indexOf(randomZone);
+        const size = randItem(SIZES);
+
+        const placed = spawnInZone(zoneIndex, type, randItem(COLORS), size);
+        if (placed) {
+            if (type === targetShape) {
+                placedTargetCount++;
+                currentRoundTargetSizes.push(size);
+            }
+            availableZones = availableZones.filter(z => z !== randomZone);
+        }
+    }
+
+    remainingTarget = placedTargetCount;
     roundData.targetShape = targetShape;
-    roundData.totalShapes = types.length;
+    roundData.totalShapes = zoneSvgs.length - availableZones.length;
     roundData.totalTargets = remainingTarget;
 }

@@ -20,7 +20,7 @@ window.onYouTubeIframeAPIReady = function () {
         playerReady = true;
       }
     },
-      onError: (e) => {
+    onError: (e) => {
       console.error("[Player Error]", e.data);
     }
   });
@@ -95,7 +95,7 @@ function detectFaceOutlineMovement(landmarks) {
   const avgDist = totalDist / outline.length;
   prevOutline = outline.map(p => ({ ...p }));
   //console.log(avgDist);
-  return avgDist > 0.01; // 姿勢変化のしきい値 もっと大きくてもいい
+  return avgDist > 0.015; // 姿勢変化のしきい値 もっと大きくてもいい
 }
 
 function getNormalizedEyePos(landmarks, isLeft = true) {
@@ -164,20 +164,39 @@ function isLookingCenter(landmarks) {
   const dYaw = pose.yaw - basePose.yaw;
   const dPitch = pose.pitch - basePose.pitch;
 
-  const diffLx = (left.x - baseLeft.x) - dYaw * yawScale;
-  const diffLy = (left.y - baseLeft.y) - dPitch * pitchScale;
-  const diffRx = (right.x - baseRight.x) - dYaw * yawScale;
-  const diffRy = (right.y - baseRight.y) - dPitch * pitchScale;
+  let diffLx = (left.x - baseLeft.x) - dYaw * yawScale;
+  let diffLy = (left.y - baseLeft.y) - dPitch * pitchScale;
+  let diffRx = (right.x - baseRight.x) - dYaw * yawScale;
+  let diffRy = (right.y - baseRight.y) - dPitch * pitchScale;
+
+  const deadzone = 0.03;
+  const verticalExponent = 2.0;
+  const horizontalExponent = 1.5;
+
+  const applyResponseCurve = (value, exponent) => {
+    const absValue = Math.abs(value);
+    if (absValue < deadzone) {
+      return 0;
+    }
+    const effectiveValue = absValue - deadzone;
+    return Math.sign(value) * (effectiveValue ** exponent);
+  };
+
+  diffLx = applyResponseCurve(diffLx, horizontalExponent);
+  diffLy = applyResponseCurve(diffLy, verticalExponent);
+  diffRx = applyResponseCurve(diffRx, horizontalExponent);
+  diffRy = applyResponseCurve(diffRy, verticalExponent);
+
+  const verticalSensitivity = 2.0;
+  diffLy *= verticalSensitivity;
+  diffRy *= verticalSensitivity;
 
   const distL = Math.sqrt(diffLx * diffLx + diffLy * diffLy);
   const distR = Math.sqrt(diffRx * diffRx + diffRy * diffRy);
   const diff = Math.max(distL, distR);
   const smoothDiff = smooth(diff);
 
-  //const THRESHOLD_OK = 0.08;
-  //const THRESHOLD_WARN = 0.12;
-
-  return { smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch };
+  return { smoothDiff, diffL: distL, diffR: distR, dYaw, dPitch, rawDiffs: { lx: diffLx, ly: diffLy, rx: diffRx, ry: diffRy } };
 }
 // ================== 視線予測・最適化版 ==================
 
@@ -196,61 +215,62 @@ faceMesh.setOptions({
 });
 
 faceMesh.onResults((results) => {
-  if (!results.multiFaceLandmarks?.length) return;
-  const landmarks = results.multiFaceLandmarks[0];
+  if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+    const landmarks = results.multiFaceLandmarks[0];
 
-  if (gameActive) {
-    totalGameFrames++;
-  }
-
-  const leftClosed = isEyeClosed(landmarks, true);
-  const rightClosed = isEyeClosed(landmarks, false);
-  if (leftClosed && rightClosed) {
-    console.log("瞬き検知");
-    blinkCooldown = 5;//瞬きクールダウン
-    return;
-  }
-  if (blinkCooldown > 0) {
-    blinkCooldown--;
-    return;
-  }
-
-  const isMoving = detectFaceOutlineMovement(landmarks);
-  if (isMoving) {
-    faceMoving = true;
-    moveCooldown = 10;
-    return;
-  }
-  if (moveCooldown > 0) {
-    moveCooldown--;
-    if (moveCooldown === 0) {
-      calibrate(landmarks);
-      faceMoving = false;
+    if (gameActive) { // gameActive は shuffle.js の変数名に合わせる
+      totalGameFrames++;
     }
-    return;
-  }
 
-  if (!calibrated) {
-    calibrate(landmarks);
-    console.log("初回キャリブレーション完了");
-  }
-  if (calibratingNow) {
-    calibrate(landmarks);
-    calibratingNow = false;
-    console.log("再キャリブレーション完了");
-  }
+    const leftClosed = isEyeClosed(landmarks, true);
+    const rightClosed = isEyeClosed(landmarks, false);
+    if (leftClosed && rightClosed) {
+      console.log("まばたき検出");
+      return;
+    }
 
-  const { smoothDiff } = isLookingCenter(landmarks);
-  gazePenaltyRaw += smoothDiff;
+    const isMoving = detectFaceOutlineMovement(landmarks);
+    if (isMoving) {
+      faceMoving = true;
+      moveCooldown = 10;
+      console.log("視線判定ストップ");
+      return;
+    }
+    if (moveCooldown > 0) {
+      moveCooldown--;
+      if (moveCooldown === 0) {
+        console.log("自動再キャリブ");
+        calibrate(landmarks);
+        faceMoving = false;
+      }
+      return;
+    }
+    if (!calibrated) {
+      calibrate(landmarks);
+      console.log("初回キャリブレーション完了");
+    }
+    if (calibratingNow) {
+      calibrate(landmarks);
+      calibratingNow = false;
+      console.log("再キャリブレーション完了");
+    }
 
-  const THRESHOLD_WARN = 0.12;
-  if (gameActive && smoothDiff > THRESHOLD_WARN) {
-    deviatedFrames++;
-}
-  const deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
-  const saturation = 95 * deviationRatio;
-  const lightness = 26 * deviationRatio;
-  document.body.style.backgroundColor = `hsl(0, ${saturation}%, ${lightness}%)`;
+    const { smoothDiff } = isLookingCenter(landmarks);
+    console.log(`smoothDiff: ${smoothDiff.toFixed(4)}`); // デバッグ用
+
+    gazePenaltyRaw += smoothDiff;
+
+    const THRESHOLD_WARN = 0.009;
+    if (gameActive && smoothDiff > THRESHOLD_WARN) { // gameActive は shuffle.js の変数名に合わせる
+      deviatedFrames++;
+    }
+
+    let deviationRatio = Math.min(1, smoothDiff / THRESHOLD_WARN);
+    deviationRatio = deviationRatio ** 2;
+    const saturation = 95 * deviationRatio;
+    const lightness = 26 * deviationRatio;
+    document.body.style.backgroundColor = `hsl(0, ${saturation}%, ${lightness}%)`;//背景色
+  }
 });
 
 const camera = new Camera(video, {
@@ -312,17 +332,21 @@ let running = false;
 const startArea = document.querySelector(".start");
 
 //apiコマンド
-function playVideo() { if (playerReady) {
-  player.playVideo();
-} else {
-  console.warn('player not ready yet');
-}}
+function playVideo() {
+  if (playerReady) {
+    player.playVideo();
+  } else {
+    console.warn('player not ready yet');
+  }
+}
 function pauseVideo() { player.pauseVideo(); }
-function unMuteVideo() { if (playerReady) {
-  player.unMute();
-} else {
-  console.warn('player not ready yet');
-} }
+function unMuteVideo() {
+  if (playerReady) {
+    player.unMute();
+  } else {
+    console.warn('player not ready yet');
+  }
+}
 
 //タイマー
 function startTimer() {
@@ -362,19 +386,47 @@ window.addEventListener("DOMContentLoaded", () => {
   console.log("DOM Ready, set_btn =", document.getElementById("set_btn"));
 
   const setBtn = document.getElementById("set_btn");
-  const durationInput = document.getElementById("durationInput");
+  const totalDurationInput = document.getElementById("totalDurationInput");
+
+  if (!totalDurationInput) {
+    console.error("エラー: 'totalDurationInput' のIDを持つ要素が見つかりません。HTMLが正しいか確認してください。");
+    alert("エラー: 'totalDurationInput' のIDを持つ要素が見つかりません。");
+    return;
+  }
+  if (!setBtn) {
+    console.error("エラー: 'set_btn' のIDを持つ要素が見つかりません。");
+    alert("エラー: 'set_btn' のIDを持つ要素が見つかりません。");
+    return;
+  }
+  console.log("totalDurationInput:", totalDurationInput);
 
   setBtn.addEventListener("click", () => {
     console.log("btnConfirm");
-    const minutes = parseFloat(durationInput.value);
-    if (!isNaN(minutes) && minutes > 0) {
-      intervalSeconds = minutes * 60;
-      console.log("ミニゲーム間隔:", intervalSeconds, "秒"); startArea.innerHTML = "";
+    const totalVideoMinutes = parseFloat(totalDurationInput.value);
 
-      showDifficultyUI();
-    } else {
-      alert("正しい数値を入力してください");
+    const MINI_GAME_DURATION_MINUTES = 1;
+    const MIN_INTERVAL_MINUTES = 1;
+
+    const totalMiniGameTime = MINI_GAME_DURATION_MINUTES * 4;
+    const intervalCount = 3;
+
+
+    const minRequiredVideoTime = totalMiniGameTime + (MIN_INTERVAL_MINUTES * intervalCount);
+
+    if (isNaN(totalVideoMinutes) || totalVideoMinutes < minRequiredVideoTime) {
+      alert(`動画時間が短すぎます。最低でも${minRequiredVideoTime}分以上の動画時間を指定してください。`);
+      return;
     }
+
+    const totalIntervalTime = totalVideoMinutes - totalMiniGameTime;
+    intervalSeconds = (totalIntervalTime / intervalCount) * 60;
+
+    console.log(`動画全体: ${totalVideoMinutes}分 / ミニゲーム回数: 4回（固定）`);
+    console.log(`総インターバル時間: ${totalIntervalTime.toFixed(2)}分 / インターバル回数: 3回`);
+    console.log(`1回あたりのインターバル: ${intervalSeconds.toFixed(2)}秒`);
+
+    startArea.innerHTML = "";
+    showDifficultyUI();
   });
 });
 
@@ -401,7 +453,7 @@ function showDifficultyUI() {
   function pick(level) {
     difficulty = level;
     if (level === "easy") {
-      config = { cupCount: 3, swapCount: 3, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 3 };
+      config = { cupCount: 3, swapCount: 3, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 5 };
     } if (level === "normal") {
       config = { cupCount: 3, swapCount: 5, cupOrder: [0, 1, 2], cupPositions: positionsTriangleLike(rect, 180), rounds: 5 };
     }
@@ -409,13 +461,12 @@ function showDifficultyUI() {
       config = { cupCount: 4, swapCount: 5, cupOrder: [0, 1, 2, 3], cupPositions: positionsRectangle(rect, 180), rounds: 5 };
     }
     wrap.remove();
-    
+
     const startPlayback = () => {
       Object.assign(iframe.style, { pointerEvents: "none" });
       playVideo();
       unMuteVideo();
-      startTimer();
-      gamestart();
+      startMiniGame();
       document.getElementById('target-overlay')?.remove();
     };
     if (playerReady) {
@@ -502,23 +553,26 @@ document.getElementById("btn-end")?.addEventListener("click", () => {
 });
 
 function endGame() {
-  //最終データ集計
   const totalPicks = corrects + misses;
   const accuracy = totalPicks > 0 ? (corrects / totalPicks * 100) : 0;
   const deviationPercentage = totalGameFrames > 0 ? (deviatedFrames / totalGameFrames * 100) : 0;
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
 
   const finalData = {
-      kind: "shuffle",
-      difficulty: difficulty,
-      score: score,
-      corrects: corrects,
-      misses: misses,
-      accuracy: accuracy.toFixed(1) + '%',
-      totalRounds: gameLog.length,
-      gazeDeviationPercentage: deviationPercentage.toFixed(2) + '%',
-      rounds: gameLog,
+    kind: "shuffle",
+    month: month,
+    day: day,
+    difficulty: difficulty,
+    score: score,
+    corrects: corrects,
+    misses: misses,
+    accuracy: accuracy.toFixed(1) + '%',
+    totalRounds: gameLog.length,
+    gazeDeviationPercentage: deviationPercentage.toFixed(2) + '%',
+    rounds: gameLog,
   };
-
   //JSONファイル
   const jsonString = JSON.stringify(finalData, null, 2);
   const blob = new Blob([jsonString], { type: 'application/json' });
@@ -532,10 +586,10 @@ function endGame() {
   URL.revokeObjectURL(url);
 
   alert([
-      `終了！`,
-      `正解: ${corrects} / ミス: ${misses}（正解率 ${accuracy.toFixed(1)}%）`,
-      `総合スコア: ${score.toLocaleString()}`,
-      `データファイルが出力されました。`
+    `終了！`,
+    `正解: ${corrects} / ミス: ${misses}（正解率 ${accuracy.toFixed(1)}%）`,
+    `総合スコア: ${score.toLocaleString()}`,
+    `データファイルが出力されました。`
   ].join('\n'));
   setTimeout(clearBoard, 500);
 
@@ -650,9 +704,7 @@ function enableCupClick() {
         reactionTime: reactionTime,
         gazePenalty: gazePenaltyRaw,
         cupCount: config.cupCount,
-        swapCount: config.swapCount,
-        correctCupIndex: ballIndex,
-        answeredCupIndex: i
+        swapCount: config.swapCount
       };
       gameLog.push(roundData);
 

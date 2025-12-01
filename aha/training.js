@@ -425,7 +425,7 @@ window.addEventListener("DOMContentLoaded", () => {
         const minRequiredVideoTime = totalMiniGameTime + (MIN_INTERVAL_MINUTES * intervalCount);
 
         if (isNaN(totalVideoMinutes) || totalVideoMinutes < minRequiredVideoTime) {
-            alert(`動画時間が短すぎます。最低でも${minRequiredVideoTime}分以上の動画時間を指定してください。（ゲーム${totalMiniGameTime}分＋最低インターバル${intervalCount}分）`);
+            alert(`動画時間が短すぎます。`);
             return;
         }
         
@@ -646,38 +646,19 @@ function classifyZonesByDistance(allZones, videoRect) {
     const videoCenterX = videoRect.x + videoRect.w / 2;
     const videoCenterY = videoRect.y + videoRect.h / 2;
 
-    //中心との距離計算
     const zonesWithDistance = allZones.map(z => {
-        const center = zoneCenter(z.rect);
-        const distance = Math.sqrt((center.x - videoCenterX) ** 2 + (center.y - videoCenterY) ** 2);
+        const center = { x: z.rect.x + z.rect.w / 2, y: z.rect.y + z.rect.h / 2 };
+        const distance = Math.sqrt(Math.pow(center.x - videoCenterX, 2) + Math.pow(center.y - videoCenterY, 2));
         return { zone: z, distance };
     });
 
-    zonesWithDistance.sort((a, b) => a.distance - b.distance);
+    zonesWithDistance.sort((a, b) => b.distance - a.distance);
 
-    const medianIndex = Math.floor(zonesWithDistance.length / 2);
-    const medianDistance = zonesWithDistance[medianIndex].distance;
+    const NUM_FAR_ZONES = 7;
+    const actualFarZoneCount = Math.min(NUM_FAR_ZONES, zonesWithDistance.length);
 
-    const farZones = [];
-    const nearZones = [];
-
-    zonesWithDistance.forEach(item => {
-        if (item.distance > medianDistance) {
-            farZones.push(item.zone);
-        } else {
-            nearZones.push(item.zone);
-        }
-    });
-
-    if (farZones.length < Math.floor(allZones.length / 3)) {
-        const farCount = Math.floor(allZones.length / 3);
-        const nearCount = allZones.length - farCount;
-        const allSortedZones = zonesWithDistance.map(item => item.zone);
-        return {
-            farZones: allSortedZones.slice(nearCount),
-            nearZones: allSortedZones.slice(0, nearCount)
-        }
-    }
+    const farZones = zonesWithDistance.slice(0, actualFarZoneCount).map(item => item.zone);
+    const nearZones = zonesWithDistance.slice(actualFarZoneCount).map(item => item.zone);
 
     return { farZones, nearZones };
 }
@@ -698,10 +679,9 @@ function startAhaRound() {
     const { farZones } = classifyZonesByDistance(zoneSvgs, videoRect);
 
     let mode = AHA.chooseMode();
-    if (config.maxShapes <= 1 && mode === 'popin') {
+    if (zoneSvgs.length <= config.maxShapes && mode === 'popin') {
         mode = 'colormorph';
     }
-
     roundData.changeType = mode;
     changeTypeCounts[mode]++;
 
@@ -711,47 +691,44 @@ function startAhaRound() {
     const forceFarZone = remainingRounds <= neededFarChanges;
 
     const potentialTargetZones = [...zoneSvgs];
-
     if (forceFarZone) {
         const farPotential = potentialTargetZones.filter(z => farZones.includes(z));
         if (farPotential.length > 0) {
             targetZone = randItem(farPotential);
-            console.log("強制的に遠いゾーンをターゲットに選択");
         }
     } else if (Math.random() < 0.35) {
         const farPotential = potentialTargetZones.filter(z => farZones.includes(z));
         if (farPotential.length > 0) {
             targetZone = randItem(farPotential);
-            console.log("35%の確率で遠いゾーンをターゲットに選択");
         }
     }
-
     if (!targetZone) {
         targetZone = randItem(potentialTargetZones);
-        console.log("通常ターゲット選択");
     }
 
-    let initialShapePlacementZones = [...zoneSvgs];
-    if (mode === "popin") {
-        initialShapePlacementZones = zoneSvgs.filter(z => z !== targetZone);
-    }
+    const zonesToFill = [];
+    let potentialZonesForInitialShapes;
+    let shapesToPlace;
 
-    const totalShapes = Math.min(initialShapePlacementZones.length, config.maxShapes);
+    if (mode === "colormorph") {
+        // colormorph図形配置
+        zonesToFill.push(targetZone);
+        potentialZonesForInitialShapes = zoneSvgs.filter(z => z !== targetZone);
+        shapesToPlace = Math.min(potentialZonesForInitialShapes.length, config.maxShapes - 1);
+    } else { // popin
+        potentialZonesForInitialShapes = zoneSvgs.filter(z => z !== targetZone);
+        shapesToPlace = Math.min(potentialZonesForInitialShapes.length, config.maxShapes);
+    }
 
     const categorizedZones = { up: [], down: [], left: [], right: [] };
-    for (const z of initialShapePlacementZones) {
+    for (const z of potentialZonesForInitialShapes) {
         const dir = mainDirectionFromPoint(zoneCenter(z.rect));
         categorizedZones[dir].push(z);
     }
-    for (const dir in categorizedZones) {
-        categorizedZones[dir].sort(() => 0.5 - Math.random());
-    }
-
-    const shapesPerCategory = Math.floor(totalShapes / 4);
-    let remainder = totalShapes % 4;
+    for (const dir in categorizedZones) { categorizedZones[dir].sort(() => 0.5 - Math.random()); }
+    const shapesPerCategory = Math.floor(shapesToPlace / 4);
+    let remainder = shapesToPlace % 4;
     const dirs = ["up", "down", "left", "right"];
-    const zonesToFill = [];
-
     for (const dir of dirs) {
         let count = shapesPerCategory;
         if (remainder > 0) { count++; remainder--; }
