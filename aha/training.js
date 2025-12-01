@@ -76,7 +76,7 @@ function isEyeClosed(landmarks, isLeft = true) {
     }
     const verticalDist = Math.abs(bottom.y - top.y);
     //console.log(verticalDist);
-    return verticalDist < 0.025;
+    return verticalDist < 0.03;
 }
 
 function detectFaceOutlineMovement(landmarks) {
@@ -212,13 +212,12 @@ faceMesh.onResults((results) => {
             totalGameFrames++;
         }
 
-        const leftClosed = isEyeClosed(landmarks, true);
-        const rightClosed = isEyeClosed(landmarks, false);
-        if (leftClosed && rightClosed) {
-            console.log("まばたき検出");
-            return;
-        }
-
+                    const leftClosed = isEyeClosed(landmarks, true);
+                    const rightClosed = isEyeClosed(landmarks, false);
+                    if (leftClosed || rightClosed) {
+                        console.log("まばたき検出");
+                        return;
+                    }
         const isMoving = detectFaceOutlineMovement(landmarks);
         if (isMoving) {
             faceMoving = true;
@@ -1196,15 +1195,4 @@ function makeBoard() {
     const zones = buildZonesByGuides();
     if (!zones.length) return;
     rebuildZoneSvgs(zones);
-
-    //デバッグ用の可視化ロジック
-    const videoRect = getVideoRect();
-    const { farZones } = classifyZonesByDistance(zoneSvgs, videoRect);
-
-    for (const z of zoneSvgs) {
-        z.svg.style.outline = "";
-    }
-    for (const z of farZones) {
-        z.svg.style.outline = "2px solid rgba(255, 255, 0, 0.7)";
-    }
 }
