@@ -75,7 +75,7 @@ function isEyeClosed(landmarks, isLeft = true) {
     top = landmarks[386]; bottom = landmarks[374];
   }
   const verticalDist = Math.abs(bottom.y - top.y);
-  return verticalDist < 0.02;
+  return verticalDist < 0.03;
 }
 
 function detectFaceOutlineMovement(landmarks) {
