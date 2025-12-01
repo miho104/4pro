@@ -329,7 +329,7 @@ let startTime = null;
 let pausedAt = 0;
 let running = false;
 let miniGameCount = 0;
-const NUM_MINI_GAMES = 4; // ミニゲーム総回数
+const NUM_MINI_GAMES = 5; // ミニゲーム総回数
 
 const startArea = document.querySelector(".start");
 
@@ -353,10 +353,12 @@ function unMuteVideo() {
 //タイマー
 function startTimer() {
   if (running) return;
+  if (pausedAt === 0) {
+    nextIntervalTime = intervalSeconds;
+  }
   startTime = performance.now() - pausedAt;
   running = true;
   timerId = requestAnimationFrame(tick);
-  nextIntervalTime = intervalSeconds;
 }
 
 function pauseTimer() {
@@ -381,6 +383,7 @@ function tick() {
   } else {
     console.log("動画終了");
     running = false;
+    endGame();
   }
 }
 
@@ -398,8 +401,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const MINI_GAME_DURATION_MINUTES = 1;
     const MIN_INTERVAL_MINUTES = 1;
 
-    const totalMiniGameTime = MINI_GAME_DURATION_MINUTES * 4;
-    const intervalCount = 3;
+    const totalMiniGameTime = MINI_GAME_DURATION_MINUTES * NUM_MINI_GAMES;
+    const intervalCount = NUM_MINI_GAMES - 1;
 
 
     const minRequiredVideoTime = totalMiniGameTime + (MIN_INTERVAL_MINUTES * intervalCount);
@@ -411,9 +414,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const totalIntervalTime = totalVideoMinutes - totalMiniGameTime;
     intervalSeconds = (totalIntervalTime / intervalCount) * 60;
+    duration = totalVideoMinutes * 60;
 
-    console.log(`動画全体: ${totalVideoMinutes}分 / ミニゲーム回数: 4回（固定）`);
-    console.log(`総インターバル時間: ${totalIntervalTime.toFixed(2)}分 / インターバル回数: 3回`);
+    console.log(`動画全体: ${totalVideoMinutes}分 / ミニゲーム回数: ${NUM_MINI_GAMES}回`);
+    console.log(`総インターバル時間: ${totalIntervalTime.toFixed(2)}分 / インターバル回数: ${intervalCount}回`);
     console.log(`1回あたりのインターバル: ${intervalSeconds.toFixed(2)}秒`);
 
     startArea.innerHTML = "";
@@ -482,7 +486,6 @@ function startMiniGame() {
   console.log(`ミニゲーム ${miniGameCount} / ${NUM_MINI_GAMES} を開始します。`);
 
   pauseTimer();
-  if (gameActive) return;
   gameActive = true;
   rounds = 0;
   document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
@@ -504,6 +507,8 @@ function endMiniGame() {
   clearBoard();
   document.getElementById('hourglass-container').style.display = 'block';
   gameActive = false;
+
+  pausedAt = 0;
 
   if (miniGameCount >= NUM_MINI_GAMES) {
     endGame();

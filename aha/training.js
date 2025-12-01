@@ -319,7 +319,7 @@ let running = null;
 
 let farZoneChangeCount = 0;
 const MIN_FAR_ZONE_CHANGES = 7;
-const NUM_MINI_GAMES = 4;//ミニゲームの総回数
+const NUM_MINI_GAMES = 5;//ミニゲームの総回数
 
 
 // ラウンド状態
@@ -423,7 +423,7 @@ window.addEventListener("DOMContentLoaded", () => {
         const MINI_GAME_DURATION_MINUTES = 1
         const MIN_INTERVAL_MINUTES = 1;
         const totalMiniGameTime = MINI_GAME_DURATION_MINUTES * 4;
-        const intervalCount = 3;
+        const intervalCount = NUM_MINI_GAMES - 1;
 
         const minRequiredVideoTime = totalMiniGameTime + (MIN_INTERVAL_MINUTES * intervalCount);
 

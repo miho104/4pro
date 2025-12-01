@@ -310,7 +310,7 @@ let timerId = null;
 let startTime = null;
 let pausedAt = 0;
 let running = false;
-const NUM_MINI_GAMES = 4; //ミニゲームの総回数
+const NUM_MINI_GAMES = 5; //ミニゲームの総回数
 
 let difficulty = null;
 let config = { rounds: 3, targetRatio: 0.4 };
@@ -391,7 +391,7 @@ window.addEventListener("DOMContentLoaded", () => {
         const MIN_INTERVAL_MINUTES = 1;
 
         const totalMiniGameTime = MINI_GAME_DURATION_MINUTES * 4;
-        const intervalCount = 3;
+        const intervalCount = NUM_MINI_GAMES - 1;
 
         // 最低動画時間
         const minRequiredVideoTime = totalMiniGameTime + (MIN_INTERVAL_MINUTES * intervalCount);
