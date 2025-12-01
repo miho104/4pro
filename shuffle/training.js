@@ -390,11 +390,11 @@ function tick() {
 window.addEventListener("DOMContentLoaded", () => {
   console.log("DOM Ready, set_btn =", document.getElementById("set_btn"));
 
-  const setBtn = document.getElementById("set_btn");
-  const durationInput = document.getElementById("durationInput");
+      const setBtn = document.getElementById("set_btn");
+      const durationInput = document.getElementById("durationInput");
 
-
-  setBtn.addEventListener("click", () => {
+      Object.assign(iframe.style, { pointerEvents: "none" });
+      setBtn.addEventListener("click", () => {
     console.log("btnConfirm");
     const totalVideoMinutes = parseFloat(durationInput.value);
 
@@ -548,6 +548,8 @@ document.getElementById("btn-end")?.addEventListener("click", () => {
 });
 
 function endGame() {
+  pauseTimer();
+  pauseVideo();
   const totalPicks = corrects + misses;
   const accuracy = totalPicks > 0 ? (corrects / totalPicks * 100) : 0;
   const deviationPercentage = totalGameFrames > 0 ? (deviatedFrames / totalGameFrames * 100) : 0;

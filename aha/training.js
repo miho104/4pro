@@ -415,6 +415,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const setBtn = document.getElementById("set_btn");
     const durationInput = document.getElementById("durationInput");
+    
+    Object.assign(iframe.style, { pointerEvents: "none" });
 
     setBtn.addEventListener("click", () => {
         console.log("btnConfirm");
@@ -487,7 +489,6 @@ function showConfirmUI() {
         document.getElementById('target-overlay')?.remove();
 
         const startPlayback = () => {
-            Object.assign(iframe.style, { pointerEvents: "none" });
             playVideo();
             unMuteVideo();
             startMiniGame();
