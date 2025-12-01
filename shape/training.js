@@ -291,6 +291,7 @@ let targetShape = null;
 let hits = 0;
 let misses = 0;
 let remainingTarget = 0;
+let roundMisses = 0;
 
 // データ記録用変数
 let gameLog = [];
@@ -309,6 +310,7 @@ let timerId = null;
 let startTime = null;
 let pausedAt = 0;
 let running = false;
+const NUM_MINI_GAMES = 4; //ミニゲームの総回数
 
 let difficulty = null;
 let config = { rounds: 3, targetRatio: 0.4 };
@@ -400,7 +402,7 @@ window.addEventListener("DOMContentLoaded", () => {
         }
 
         const totalIntervalTime = totalVideoMinutes - totalMiniGameTime;
-        intervalSeconds = (totalIntervalTime / intervalCount) * 60; // intervalCountは必ず3なので、0除算の心配なし
+        intervalSeconds = (totalIntervalTime / intervalCount) * 60;
 
         console.log(`動画全体: ${totalVideoMinutes}分 / ミニゲーム回数: 4回（固定）`);
         console.log(`総インターバル時間: ${totalIntervalTime.toFixed(2)}分 / インターバル回数: 3回`);
@@ -535,6 +537,7 @@ function startMiniGame() {
 }
 
 function runRound() {
+    roundMisses = 0;
     if (rounds >= config.rounds) {
         endMiniGame();
         return;
@@ -556,8 +559,12 @@ function endMiniGame() {
     clearBoard();
     document.getElementById('hourglass-container').style.display = 'block';
     gameActive = false;
-    // pausedAt = 0;
-    startTimer();
+
+    if (gameCount >= NUM_MINI_GAMES) {
+        endGame();
+    } else {
+        startTimer();
+    }
     console.log("ミニゲーム終了");
 }
 
@@ -711,7 +718,7 @@ function rebuildZoneSvgs(zones) {
             width: `${z.w}px`, height: `${z.h}px`,
             zIndex: '1001',
             pointerEvents: 'none',
-            outline: "1px dashed rgba(0,255,0,.35)"//デバック用
+            //outline: "1px dashed rgba(0,255,0,.35)"//デバック用
         });
         document.body.appendChild(s);
         zoneSvgs.push({ svg: s, rect: z, busy: false });
@@ -771,7 +778,7 @@ function onPick() {
             const penalty = Math.floor(Math.round((gazePenaltyRaw * 100) ** 2 * 0.005) / 100) * 100;
 
             //図形ミス減点
-            const misspenalty = misses * 500;//1ミス-500
+            const misspenalty = roundMisses * 700;//1ミス-500
 
             const roundScore = Math.max(0, baseScore + speedComponent - penalty - misspenalty);
             score += roundScore;
@@ -780,6 +787,7 @@ function onPick() {
             roundData.clearTime = clearMs;
             roundData.roundScore = roundScore;
             roundData.gazePenalty = gazePenaltyRaw;
+            roundData.roundMisses = roundMisses;
             roundData.clicks = clickLog;
             gameLog.push(roundData);
 
@@ -788,6 +796,7 @@ function onPick() {
         }
     } else {//ミスアニメーション
         misses++;
+        roundMisses++;
         this.animate(
             [
                 { transform: "translate(0,0)" },

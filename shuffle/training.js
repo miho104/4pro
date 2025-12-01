@@ -328,6 +328,8 @@ let timerId = null;
 let startTime = null;
 let pausedAt = 0;
 let running = false;
+let miniGameCount = 0;
+const NUM_MINI_GAMES = 4;
 
 const startArea = document.querySelector(".start");
 
@@ -476,6 +478,9 @@ function showDifficultyUI() {
 }
 //ミニゲーム進行
 function startMiniGame() {
+  miniGameCount++;
+  console.log(`ミニゲーム ${miniGameCount} / ${NUM_MINI_GAMES} を開始します。`);
+
   pauseTimer();
   if (gameActive) return;
   gameActive = true;
@@ -498,8 +503,12 @@ function endMiniGame() {
   clearBoard();
   document.getElementById('hourglass-container').style.display = 'block';
   gameActive = false;
-  //pausedAt = 0;
-  startTimer();
+
+  if (miniGameCount >= NUM_MINI_GAMES) {
+    endGame();
+  } else {
+    startTimer();
+  }
   console.log("ミニゲーム終了");
 }
 
