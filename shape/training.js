@@ -378,23 +378,12 @@ window.addEventListener("DOMContentLoaded", () => {
     console.log("DOM Ready, set_btn =", document.getElementById("set_btn"));
 
     const setBtn = document.getElementById("set_btn");
-    const totalDurationInput = document.getElementById("totalDurationInput");
+    const durationInput = document.getElementById("durationInput");
 
-    if (!totalDurationInput) {
-        console.error("エラー: 'totalDurationInput' のIDを持つ要素が見つかりません。HTMLが正しいか確認してください。");
-        alert("エラー: 'totalDurationInput' のIDを持つ要素が見つかりません。");
-        return;
-    }
-    if (!setBtn) {
-        console.error("エラー: 'set_btn' のIDを持つ要素が見つかりません。");
-        alert("エラー: 'set_btn' のIDを持つ要素が見つかりません。");
-        return;
-    }
-    console.log("totalDurationInput:", totalDurationInput);
 
     setBtn.addEventListener("click", () => {
         console.log("btnConfirm");
-        const totalVideoMinutes = parseFloat(totalDurationInput.value);
+        const totalVideoMinutes = parseFloat(durationInput.value);
 
         const MINI_GAME_DURATION_MINUTES = 1;
         const MIN_INTERVAL_MINUTES = 1;
