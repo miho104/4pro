@@ -453,8 +453,9 @@ function showConfirmUI() {
     btnConfirm.className = 'btn';
     startArea.appendChild(btnConfirm);
 
-    if (!targetShape) targetShape = randItem(SHAPES);
-    if (!targetShape) targetShape = randItem(SHAPES);
+    if (!targetShape) {
+        targetShape = randItem(SHAPES);
+    }
 
     //お手本図形
     const r = iframe.getBoundingClientRect();
@@ -477,7 +478,7 @@ function showConfirmUI() {
     s.setAttribute("width", px);
     s.setAttribute("height", px);
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    drawShape(g, targetShape ?? randItem(SHAPES), px / 2, px / 2, px * 0.9, "#10d1cf");
+    drawShape(g, targetShape, px / 2, px / 2, px * 0.9, "#10d1cf");
     s.appendChild(g);
     ov.appendChild(s);
     document.body.appendChild(ov);
@@ -546,6 +547,13 @@ function runRound() {
         endMiniGame();
         return;
     }
+
+    const boardReady = makeBoard();
+    if (!boardReady) {
+        setTimeout(runRound, 500);
+        return;
+    }
+
     rounds++;
 
     // データ収集
@@ -556,7 +564,6 @@ function runRound() {
     currentRoundTargetSizes = [];
     currentRoundStartMs = performance.now();
     document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
-    makeBoard();
 }
 
 function endMiniGame() {
@@ -989,4 +996,10 @@ function makeBoard() {
     roundData.targetShape = targetShape;
     roundData.totalShapes = zoneSvgs.length - availableZones.length;
     roundData.totalTargets = remainingTarget;
+
+    if (remainingTarget === 0 && gameActive) {
+        console.warn("ターゲットが一つも生成されませんでした。ラウンドを再試行します。");
+        return false;
+    }
+    return true;
 }
