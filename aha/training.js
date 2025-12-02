@@ -860,13 +860,13 @@ function onAhaKeyDown(ev) {
             corrects++;
             score += Math.max(0, baseScore + speedComponent - penalty);
             All_Penalty += penalty;
-            highlightElement(ahaTargetElement, true);
+            highlightElement(ahaTargetElement, true, roundData);
         } else {
             misses++;
             score += Math.max(0, -penalty);
             smallShake();
             setTimeout(() => {
-                highlightElement(ahaTargetElement, true);
+                highlightElement(ahaTargetElement, true, roundData);
             }, 400);
         }
         // ラウンド終了処理
@@ -881,13 +881,15 @@ function onAhaKeyDown(ev) {
 }
 
 //正解不正解ハイライト
-function highlightElement(el, shouldScale = false) {
+function highlightElement(el, shouldScale = false, roundInfo) {
     if (!el || !el.firstElementChild) return;
     const child = el.firstElementChild;
     const originalStroke = child.getAttribute("stroke");
     const originalStrokeWidth = child.getAttribute("stroke-width");
     const originalTransform = el.getAttribute("transform") || "";
+    const originalOpacity = el.style.opacity || '1';
 
+    // 強調表示
     child.setAttribute("stroke", "#ffffff");
     child.setAttribute("stroke-width", "5");
 
@@ -902,20 +904,49 @@ function highlightElement(el, shouldScale = false) {
 
         el.setAttribute("transform", newTransform);
         el.style.transition = "transform 0.2s ease-out";
-
-        setTimeout(() => {
-            if (originalStroke) {
-                child.setAttribute("stroke", originalStroke);
-            } else {
-                child.removeAttribute("stroke");
-            }
-            if (originalStrokeWidth) {
-                child.setAttribute("stroke-width", originalStrokeWidth);
-            }
-            el.setAttribute("transform", originalTransform);
-            el.style.transition = "";
-        }, AHA.afterAnswerFreezeMs);
     }
+
+    let activeInterval = null;
+
+    if (roundInfo && roundInfo.changeType === 'colormorph') {
+        const fromColor = roundInfo.color_from;
+        const toColor = roundInfo.color_to;
+        let isFromColor = false;
+        setFillOfGroup(el, toColor);
+
+        activeInterval = setInterval(() => {
+            isFromColor = !isFromColor;
+            setFillOfGroup(el, isFromColor ? fromColor : toColor);
+        }, 300);
+
+    } else if (roundInfo && roundInfo.changeType === 'popin') {
+        activeInterval = setInterval(() => {
+            el.style.opacity = el.style.opacity === '0.5' ? '1' : '0.5';
+        }, 200);
+    }
+
+    setTimeout(() => {
+        if (activeInterval) {
+            clearInterval(activeInterval);
+        }
+
+        if (roundInfo && roundInfo.changeType === 'colormorph') {
+            setFillOfGroup(el, roundInfo.color_to);
+        }
+
+        if (originalStroke) {
+            child.setAttribute("stroke", originalStroke);
+        } else {
+            child.removeAttribute("stroke");
+        }
+        if (originalStrokeWidth) {
+            child.setAttribute("stroke-width", originalStrokeWidth);
+        }
+        el.setAttribute("transform", originalTransform);
+        el.style.transition = "";
+        el.style.opacity = originalOpacity;
+
+    }, AHA.afterAnswerFreezeMs);
 }
 
 function smallShake() {
