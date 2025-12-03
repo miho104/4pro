@@ -276,9 +276,9 @@ const camera = new Camera(video, {
 
 // =================== ゲーム本体 ===================
 const SHAPES = ["circle", "triangle", "square", "star", "pentagon"];
-const COLORS = ["#f87171", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#f472b6"];
+const COLORS = ["#f87171", "#60a5fa", "#34d3b2", "#fbbf24", "#7f55ff", "#f472b6"];
 const WARM_COLORS = ["#f87171", "#fbbf24", "#f472b6"];
-const COOL_COLORS = ["#60a5fa", "#34d399", "#a78bfa"];
+const COOL_COLORS = ["#60a5fa", "#34d3b2", "#7f55ff"];
 const SIZES = [60, 80, 100];
 
 const AVOID_PAD = 16;
