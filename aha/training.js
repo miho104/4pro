@@ -1005,16 +1005,18 @@ function endMiniGame() {
     }
 }
 
-function startMiniGame() {
-    miniGameCount++;
+    function startMiniGame() {
+        miniGameCount++;
 
-    pauseTimer();
-    ahaActive = true;
-    ahaRounds = 0;
-    currentRoundStartMs = performance.now();
-    document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
-    startAhaRound();
-}
+        pauseTimer();
+        ahaActive = true;
+        ahaRounds = 0;
+        currentRoundStartMs = performance.now();
+        document.getElementById('hourglass-container').style.display = 'none';//砂時計を非表示
+        setTimeout(() => {
+            startAhaRound();
+        }, 2000);
+    }
 
 function endGame() {
     const totalPicks = corrects + misses;
@@ -1045,7 +1047,7 @@ function endGame() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `game_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    a.download = `aha_result.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

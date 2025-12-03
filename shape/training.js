@@ -642,7 +642,7 @@ function endGame() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `shape_game_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    a.download = `shape_result.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
