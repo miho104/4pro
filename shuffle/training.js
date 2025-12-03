@@ -576,7 +576,7 @@ function endGame() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `shape_result.json`;
+  a.download = `shuffle_result.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
